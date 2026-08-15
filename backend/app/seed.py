@@ -13,6 +13,8 @@ from sqlalchemy import select
 from app.core.bootstrap import register_all_modules
 from app.core.database import AsyncSessionLocal, set_tenant_session_var
 from app.core.module_registry import get_registered_modules
+from app.entitlements.models import TenantModuleEntitlement
+from app.entitlements.repository import TenantModuleEntitlementRepository
 from app.models_all import Base  # noqa: F401 — registers every mapped model on Base.metadata
 
 # before any relationship/FK is resolved. Without this, running this module directly
@@ -63,6 +65,14 @@ DEFAULT_ROLE_BUNDLES: dict[str, list[str] | None] = {
         # Phase 2 — Tracking Baseline: Tenant Admin gets both tracking permissions.
         "tracking.scan",
         "tracking.view",
+        # Phase 3 — Inventory & Audit: Tenant Admin gets all four, including
+        # inventory.reconcile — a marked_lost decision is a write-off determination with
+        # consequences beyond the one transaction, reserved the same way
+        # asset_lifecycle.configure is.
+        "inventory.view",
+        "inventory.manage_cycles",
+        "inventory.verify",
+        "inventory.reconcile",
     ],
     "Member": [
         "users.view",
@@ -82,6 +92,11 @@ DEFAULT_ROLE_BUNDLES: dict[str, list[str] | None] = {
         # Phase 2 — Tracking Baseline: Member gets both tracking permissions.
         "tracking.scan",
         "tracking.view",
+        # Phase 3 — Inventory & Audit: Member gets view/verify/manage_cycles, not reconcile —
+        # operationally similar to Flow's move/transition_lifecycle, which Member already holds.
+        "inventory.view",
+        "inventory.manage_cycles",
+        "inventory.verify",
     ],
     "Viewer": [
         "users.view",
@@ -91,6 +106,8 @@ DEFAULT_ROLE_BUNDLES: dict[str, list[str] | None] = {
         "asset_lifecycle.view",
         # Phase 2 — Tracking Baseline: Viewer gets tracking.view only (no scanning).
         "tracking.view",
+        # Phase 3 — Inventory & Audit: Viewer gets inventory.view only.
+        "inventory.view",
     ],
 }
 
@@ -143,6 +160,20 @@ async def ensure_tenant(db, *, name: str, subdomain: str, tier: str) -> Tenant:
     return tenant
 
 
+async def ensure_module_entitlement(db, tenant_id, *, module_key: str, enabled: bool) -> TenantModuleEntitlement:
+    """Phase 3's inventory module registers with default_enabled=False (see
+    app/inventory/permissions.py) — the first module in the project a tenant is NOT entitled
+    to unless something explicitly says so. This gives the acme-demo tenant a source="seed"
+    row so at least one demo environment can exercise the feature without a manual
+    entitlement flip via the /admin/modules endpoint."""
+    repo = TenantModuleEntitlementRepository(db, tenant_id)
+    row = await repo.get_by_module_key(module_key)
+    if row is None:
+        row = repo.add(TenantModuleEntitlement(module_key=module_key, enabled=enabled, source="seed"))
+        await db.flush()
+    return row
+
+
 async def ensure_user(db, tenant_id, *, email: str, role: Role, password: str = SEED_PASSWORD):
     user_repo = UserRepository(db, tenant_id)
     user = await user_repo.get_by_email(email)
@@ -186,6 +217,7 @@ async def main() -> None:
         # --- demo tenant, one user per role bundle --------------------------------------
         tenant = await ensure_tenant(db, name="Acme Corporation", subdomain="acme-demo", tier="basic")
         await set_tenant_session_var(db, tenant.id, local=False)
+        await ensure_module_entitlement(db, tenant.id, module_key="inventory", enabled=True)
 
         demo_users = [
             ("admin@zonovia.example", "Tenant Admin"),

@@ -14,6 +14,7 @@ from app.core.middleware import install_security_headers
 from app.entitlements.router import router as entitlements_router
 from app.flow.router import lifecycle_config_router
 from app.flow.router import router as flow_router
+from app.inventory.router import router as inventory_router
 from app.tenants.router import router as tenants_router
 from app.tenants.router import settings_router as tenant_settings_router
 from app.tracking.router import events_router as tracking_events_router
@@ -74,3 +75,4 @@ app.include_router(flow_router, prefix=api_prefix)
 app.include_router(lifecycle_config_router, prefix=api_prefix)
 app.include_router(tracking_router, prefix=api_prefix)
 app.include_router(tracking_events_router, prefix=api_prefix)
+app.include_router(inventory_router, prefix=api_prefix)

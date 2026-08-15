@@ -117,6 +117,24 @@ class AssetRepository(TenantScopedRepository[Asset]):
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
+    async def list_all(self) -> list[Asset]:
+        """Unpaginated — the inherited `list()` defaults to limit=20, which would silently
+        truncate inventory scope resolution for any tenant with more than 20 assets. Only
+        used by app.inventory.service.InventoryService.list_expected_assets."""
+        stmt = self._base_query()
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def list_by_location_ids(self, location_ids: list[uuid.UUID]) -> list[Asset]:
+        """IN-query variant of list_by_location, for a location-scoped inventory cycle whose
+        asset set spans a root location plus every descendant returned by
+        AssetLocationRepository.list_descendants."""
+        if not location_ids:
+            return []
+        stmt = self._base_query().where(Asset.current_location_id.in_(location_ids))
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
 
 class AssetIdentifierRepository(TenantScopedRepository[AssetIdentifier]):
     model = AssetIdentifier

@@ -1,18 +1,23 @@
-"""Regression guard for app/seed.py::DEFAULT_ROLE_BUNDLES's Phase 1/2 extensions — the exact
+"""Regression guard for app/seed.py::DEFAULT_ROLE_BUNDLES's Phase 1/2/3 extensions — the exact
 permission-to-bundle table from the implementation plan: Viewer gets every *.view key only;
 Member gets everything except asset_lifecycle.configure; Tenant Admin gets everything
 including asset_lifecycle.configure; Platform Admin is unaffected (still the None sentinel,
 meaning every registered permission). Phase 2 — Tracking Baseline extends this the same way:
 Viewer gets tracking.view only, Member and Tenant Admin both get tracking.scan and
-tracking.view (no "configure"-style permission to reserve here, unlike asset_lifecycle)."""
+tracking.view (no "configure"-style permission to reserve here, unlike asset_lifecycle). Phase
+3 — Inventory & Audit: Viewer gets inventory.view only; Member gets view/verify/manage_cycles
+but NOT reconcile (reserved the same way asset_lifecycle.configure is); Tenant Admin gets all
+four including inventory.reconcile."""
 
 from app.asset_core.permissions import MODULE as asset_core_module
 from app.flow.permissions import MODULE as flow_module
+from app.inventory.permissions import MODULE as inventory_module
 from app.seed import DEFAULT_ROLE_BUNDLES
 from app.tracking.permissions import MODULE as tracking_module
 
 _ASSET_CORE_AND_FLOW_KEYS = {p.key for p in asset_core_module.permissions} | {p.key for p in flow_module.permissions}
 _TRACKING_KEYS = {p.key for p in tracking_module.permissions}
+_INVENTORY_KEYS = {p.key for p in inventory_module.permissions}
 
 
 def test_platform_admin_bundle_is_still_the_none_sentinel():
@@ -55,3 +60,22 @@ def test_viewer_gets_only_tracking_view_not_tracking_scan():
     viewer_keys = set(DEFAULT_ROLE_BUNDLES["Viewer"])
     assert "tracking.view" in viewer_keys
     assert "tracking.scan" not in viewer_keys
+
+
+def test_tenant_admin_gets_every_inventory_permission_including_reconcile():
+    tenant_admin_keys = set(DEFAULT_ROLE_BUNDLES["Tenant Admin"])
+    assert _INVENTORY_KEYS <= tenant_admin_keys
+    assert "inventory.reconcile" in tenant_admin_keys
+
+
+def test_member_gets_inventory_view_verify_manage_cycles_but_not_reconcile():
+    member_keys = set(DEFAULT_ROLE_BUNDLES["Member"])
+    expected = _INVENTORY_KEYS - {"inventory.reconcile"}
+    assert expected <= member_keys
+    assert "inventory.reconcile" not in member_keys
+
+
+def test_viewer_gets_only_inventory_view():
+    viewer_keys = set(DEFAULT_ROLE_BUNDLES["Viewer"])
+    assert "inventory.view" in viewer_keys
+    assert viewer_keys.isdisjoint(_INVENTORY_KEYS - {"inventory.view"})
