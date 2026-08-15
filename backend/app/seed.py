@@ -44,9 +44,46 @@ DEFAULT_ROLE_BUNDLES: dict[str, list[str] | None] = {
         "tenants.view_settings",
         "tenants.manage_settings",
         "entitlements.view",
+        # Phase 1 — Asset Core: Tenant Admin gets everything, including
+        # asset_lifecycle.configure (editing the tenant-wide state machine is reserved — a
+        # bad edit breaks every future transition, so only Tenant Admin/Platform Admin get it).
+        "assets.view",
+        "assets.create",
+        "assets.edit",
+        "assets.delete",
+        "assets.manage_documents",
+        "asset_catalog.manage",
+        "asset_locations.view",
+        "asset_locations.manage",
+        "asset_lifecycle.view",
+        "assets.transition_lifecycle",
+        "assets.assign",
+        "assets.move",
+        "asset_lifecycle.configure",
     ],
-    "Member": ["users.view"],
-    "Viewer": ["users.view"],
+    "Member": [
+        "users.view",
+        # Phase 1 — Asset Core: Member gets everything except asset_lifecycle.configure.
+        "assets.view",
+        "assets.create",
+        "assets.edit",
+        "assets.delete",
+        "assets.manage_documents",
+        "asset_catalog.manage",
+        "asset_locations.view",
+        "asset_locations.manage",
+        "asset_lifecycle.view",
+        "assets.transition_lifecycle",
+        "assets.assign",
+        "assets.move",
+    ],
+    "Viewer": [
+        "users.view",
+        # Phase 1 — Asset Core: Viewer gets every *.view key only.
+        "assets.view",
+        "asset_locations.view",
+        "asset_lifecycle.view",
+    ],
 }
 
 

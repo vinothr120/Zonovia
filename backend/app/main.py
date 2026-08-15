@@ -2,6 +2,9 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.asset_core.router import catalog_router as asset_catalog_router
+from app.asset_core.router import locations_router as asset_locations_router
+from app.asset_core.router import router as assets_router
 from app.audit.router import router as audit_router
 from app.auth.router import router as auth_router
 from app.config import settings
@@ -9,6 +12,8 @@ from app.core.bootstrap import register_all_modules
 from app.core.exceptions import AppError
 from app.core.middleware import install_security_headers
 from app.entitlements.router import router as entitlements_router
+from app.flow.router import lifecycle_config_router
+from app.flow.router import router as flow_router
 from app.tenants.router import router as tenants_router
 from app.tenants.router import settings_router as tenant_settings_router
 from app.users.router import permissions_router, roles_router
@@ -59,3 +64,8 @@ app.include_router(roles_router, prefix=api_prefix)
 app.include_router(permissions_router, prefix=api_prefix)
 app.include_router(audit_router, prefix=api_prefix)
 app.include_router(entitlements_router, prefix=api_prefix)
+app.include_router(assets_router, prefix=api_prefix)
+app.include_router(asset_catalog_router, prefix=api_prefix)
+app.include_router(asset_locations_router, prefix=api_prefix)
+app.include_router(flow_router, prefix=api_prefix)
+app.include_router(lifecycle_config_router, prefix=api_prefix)

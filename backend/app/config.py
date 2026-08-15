@@ -32,6 +32,22 @@ class Settings(BaseSettings):
     login_rate_limit_per_ip: int = 20
     login_rate_limit_window_seconds: int = 300
 
+    # Local-disk storage backend (app/core/storage.py) — a Docker volume in production.
+    # Swappable for S3/Azure Blob/GCS later without touching calling code. Phase 1's first
+    # caller is AssetDocument (app/asset_core).
+    file_storage_root: str = "./storage"
+    file_max_size_bytes: int = 10 * 1024 * 1024  # 10 MB
+    file_allowed_content_types: list[str] = [
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ]
+
     @property
     def is_production(self) -> bool:
         return self.environment == "production"

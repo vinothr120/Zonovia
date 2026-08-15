@@ -1,8 +1,13 @@
 import os
+import tempfile
 import uuid
 
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-not-for-production")
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+# Phase 1 — Asset Core's AssetDocument is the first real file-upload caller; route the
+# LocalStorageBackend (app/core/storage.py) at a throwaway system temp dir for the test run
+# rather than the default ./storage (which would otherwise litter the repo working tree).
+os.environ.setdefault("FILE_STORAGE_ROOT", tempfile.mkdtemp(prefix="zonovia-test-storage-"))
 
 import pytest_asyncio
 from fastapi import Depends
