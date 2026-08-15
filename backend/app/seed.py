@@ -73,6 +73,14 @@ DEFAULT_ROLE_BUNDLES: dict[str, list[str] | None] = {
         "inventory.manage_cycles",
         "inventory.verify",
         "inventory.reconcile",
+        # Phase 4 — Maintenance & Warranty: Tenant Admin gets all four — no permission is
+        # reserved Tenant-Admin-only this phase (unlike asset_lifecycle.configure/
+        # inventory.reconcile), since nothing here rewrites a shared graph or makes a
+        # permanent write-off determination.
+        "maintenance.view",
+        "maintenance.manage_tickets",
+        "maintenance.manage_warranty",
+        "maintenance.manage_schedules",
     ],
     "Member": [
         "users.view",
@@ -97,6 +105,12 @@ DEFAULT_ROLE_BUNDLES: dict[str, list[str] | None] = {
         "inventory.view",
         "inventory.manage_cycles",
         "inventory.verify",
+        # Phase 4 — Maintenance & Warranty: Member gets all four, same as Tenant Admin — see
+        # the comment on Tenant Admin's bundle above.
+        "maintenance.view",
+        "maintenance.manage_tickets",
+        "maintenance.manage_warranty",
+        "maintenance.manage_schedules",
     ],
     "Viewer": [
         "users.view",
@@ -108,6 +122,8 @@ DEFAULT_ROLE_BUNDLES: dict[str, list[str] | None] = {
         "tracking.view",
         # Phase 3 — Inventory & Audit: Viewer gets inventory.view only.
         "inventory.view",
+        # Phase 4 — Maintenance & Warranty: Viewer gets maintenance.view only.
+        "maintenance.view",
     ],
 }
 
@@ -218,6 +234,10 @@ async def main() -> None:
         tenant = await ensure_tenant(db, name="Acme Corporation", subdomain="acme-demo", tier="basic")
         await set_tenant_session_var(db, tenant.id, local=False)
         await ensure_module_entitlement(db, tenant.id, module_key="inventory", enabled=True)
+        # Phase 4 — Maintenance & Warranty registers with default_enabled=False, same as
+        # inventory — give acme-demo an explicit source="seed" entitlement row so the demo
+        # environment can exercise it too.
+        await ensure_module_entitlement(db, tenant.id, module_key="maintenance", enabled=True)
 
         demo_users = [
             ("admin@zonovia.example", "Tenant Admin"),

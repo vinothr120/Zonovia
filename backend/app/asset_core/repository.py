@@ -135,6 +135,16 @@ class AssetRepository(TenantScopedRepository[Asset]):
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
+    async def list_by_lifecycle_state_id(self, state_id: uuid.UUID) -> list[Asset]:
+        """Filters the existing Asset.current_lifecycle_state_id column only — this file still
+        never imports anything from app.flow. Used by
+        app.maintenance.service.MaintenanceService.list_tickets's lifecycle_state_key filter,
+        which resolves the key to an id via the read-only
+        app.flow.repository.LifecycleStateDefinitionRepository before calling this."""
+        stmt = self._base_query().where(Asset.current_lifecycle_state_id == state_id)
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
 
 class AssetIdentifierRepository(TenantScopedRepository[AssetIdentifier]):
     model = AssetIdentifier

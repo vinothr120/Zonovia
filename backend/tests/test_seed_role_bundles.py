@@ -12,12 +12,14 @@ four including inventory.reconcile."""
 from app.asset_core.permissions import MODULE as asset_core_module
 from app.flow.permissions import MODULE as flow_module
 from app.inventory.permissions import MODULE as inventory_module
+from app.maintenance.permissions import MODULE as maintenance_module
 from app.seed import DEFAULT_ROLE_BUNDLES
 from app.tracking.permissions import MODULE as tracking_module
 
 _ASSET_CORE_AND_FLOW_KEYS = {p.key for p in asset_core_module.permissions} | {p.key for p in flow_module.permissions}
 _TRACKING_KEYS = {p.key for p in tracking_module.permissions}
 _INVENTORY_KEYS = {p.key for p in inventory_module.permissions}
+_MAINTENANCE_KEYS = {p.key for p in maintenance_module.permissions}
 
 
 def test_platform_admin_bundle_is_still_the_none_sentinel():
@@ -79,3 +81,21 @@ def test_viewer_gets_only_inventory_view():
     viewer_keys = set(DEFAULT_ROLE_BUNDLES["Viewer"])
     assert "inventory.view" in viewer_keys
     assert viewer_keys.isdisjoint(_INVENTORY_KEYS - {"inventory.view"})
+
+
+def test_tenant_admin_gets_every_maintenance_permission():
+    tenant_admin_keys = set(DEFAULT_ROLE_BUNDLES["Tenant Admin"])
+    assert _MAINTENANCE_KEYS <= tenant_admin_keys
+
+
+def test_member_gets_every_maintenance_permission_same_as_tenant_admin():
+    """Unlike asset_lifecycle.configure/inventory.reconcile, no permission is reserved
+    Tenant-Admin-only this phase — Member gets all four maintenance permissions too."""
+    member_keys = set(DEFAULT_ROLE_BUNDLES["Member"])
+    assert _MAINTENANCE_KEYS <= member_keys
+
+
+def test_viewer_gets_only_maintenance_view():
+    viewer_keys = set(DEFAULT_ROLE_BUNDLES["Viewer"])
+    assert "maintenance.view" in viewer_keys
+    assert viewer_keys.isdisjoint(_MAINTENANCE_KEYS - {"maintenance.view"})

@@ -10,6 +10,7 @@ def register_all_modules() -> None:
     from app.entitlements.permissions import MODULE as entitlements_module
     from app.flow.permissions import MODULE as flow_module
     from app.inventory.permissions import MODULE as inventory_module
+    from app.maintenance.permissions import MODULE as maintenance_module
     from app.tenants.permissions import MODULE as platform_module
     from app.tracking.permissions import MODULE as tracking_module
     from app.users.permissions import MODULE as users_module
@@ -23,6 +24,7 @@ def register_all_modules() -> None:
         flow_module,
         tracking_module,
         inventory_module,
+        maintenance_module,
     ):
         register_module(module)
 
