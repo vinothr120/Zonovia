@@ -8,7 +8,7 @@ from app.asset_core.router import router as assets_router
 from app.audit.router import router as audit_router
 from app.auth.router import router as auth_router
 from app.config import settings
-from app.core.bootstrap import register_all_modules
+from app.core.bootstrap import register_all_modules, register_all_tracking_providers
 from app.core.exceptions import AppError
 from app.core.middleware import install_security_headers
 from app.entitlements.router import router as entitlements_router
@@ -16,10 +16,13 @@ from app.flow.router import lifecycle_config_router
 from app.flow.router import router as flow_router
 from app.tenants.router import router as tenants_router
 from app.tenants.router import settings_router as tenant_settings_router
+from app.tracking.router import events_router as tracking_events_router
+from app.tracking.router import router as tracking_router
 from app.users.router import permissions_router, roles_router
 from app.users.router import router as users_router
 
 register_all_modules()
+register_all_tracking_providers()
 
 app = FastAPI(
     title=settings.app_name,
@@ -69,3 +72,5 @@ app.include_router(asset_catalog_router, prefix=api_prefix)
 app.include_router(asset_locations_router, prefix=api_prefix)
 app.include_router(flow_router, prefix=api_prefix)
 app.include_router(lifecycle_config_router, prefix=api_prefix)
+app.include_router(tracking_router, prefix=api_prefix)
+app.include_router(tracking_events_router, prefix=api_prefix)

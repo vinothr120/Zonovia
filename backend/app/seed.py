@@ -60,6 +60,9 @@ DEFAULT_ROLE_BUNDLES: dict[str, list[str] | None] = {
         "assets.assign",
         "assets.move",
         "asset_lifecycle.configure",
+        # Phase 2 — Tracking Baseline: Tenant Admin gets both tracking permissions.
+        "tracking.scan",
+        "tracking.view",
     ],
     "Member": [
         "users.view",
@@ -76,6 +79,9 @@ DEFAULT_ROLE_BUNDLES: dict[str, list[str] | None] = {
         "assets.transition_lifecycle",
         "assets.assign",
         "assets.move",
+        # Phase 2 — Tracking Baseline: Member gets both tracking permissions.
+        "tracking.scan",
+        "tracking.view",
     ],
     "Viewer": [
         "users.view",
@@ -83,6 +89,8 @@ DEFAULT_ROLE_BUNDLES: dict[str, list[str] | None] = {
         "assets.view",
         "asset_locations.view",
         "asset_lifecycle.view",
+        # Phase 2 — Tracking Baseline: Viewer gets tracking.view only (no scanning).
+        "tracking.view",
     ],
 }
 

@@ -23,4 +23,5 @@ from app.flow.models import (  # noqa: F401
     LifecycleTransitionDefinition,
 )
 from app.tenants.models import Tenant, TenantConnectionRoute, TenantSetting  # noqa: F401
+from app.tracking.models import TrackingEvent  # noqa: F401
 from app.users.models import Permission, Role, RolePermission, User, UserRole  # noqa: F401

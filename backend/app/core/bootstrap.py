@@ -10,7 +10,29 @@ def register_all_modules() -> None:
     from app.entitlements.permissions import MODULE as entitlements_module
     from app.flow.permissions import MODULE as flow_module
     from app.tenants.permissions import MODULE as platform_module
+    from app.tracking.permissions import MODULE as tracking_module
     from app.users.permissions import MODULE as users_module
 
-    for module in (platform_module, users_module, audit_module, entitlements_module, asset_core_module, flow_module):
+    for module in (
+        platform_module,
+        users_module,
+        audit_module,
+        entitlements_module,
+        asset_core_module,
+        flow_module,
+        tracking_module,
+    ):
         register_module(module)
+
+
+def register_all_tracking_providers() -> None:
+    """Imported once at app startup — registers every built-in TrackingProvider before any
+    scan request can look one up. Mirrors register_all_modules's shape and reasoning: adding
+    a new provider later (e.g. Phase 6's track_rfid module registering an RFIDProvider) means
+    adding one import here, without app/tracking/ ever importing from the new module."""
+    from app.tracking.providers.barcode import BarcodeProvider
+    from app.tracking.providers.qr import QRProvider
+    from app.tracking.providers.registry import register_provider
+
+    register_provider(QRProvider())
+    register_provider(BarcodeProvider())
