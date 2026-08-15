@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: ruff check
+        working-directory: backend
+        run: ruff check app tests
+
+      - name: ruff format --check
+        working-directory: backend
+        run: ruff format --check app tests
+
+  unit-tests:
+    name: Unit tests (SQLite)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run unit test suite (not postgres)
+        working-directory: backend
+        # JWT_SECRET_KEY/DATABASE_URL are set by tests/conftest.py itself (in-memory SQLite,
+        # no external services needed) — Redis-backed caching/rate-limiting fails open when
+        # Redis is unreachable (see core/cache.py's circuit breaker), so this job needs no
+        # Redis service container for the suite to pass.
+        run: python -m pytest -v -m "not postgres"
+
+      - name: Smoke-test the dev seed script
+        working-directory: backend
+        # Exercises app/seed.py end-to-end against a fresh SQLite DB — the pytest suite
+        # builds its own fixtures directly and never calls this script, so this is the only
+        # job step that would catch a regression in the seed path itself (e.g. a
+        # DEFAULT_ROLE_BUNDLES permission key that doesn't match a registered module).
+        run: python scripts/run_dev_sqlite.py
+
+  postgres-integration:
+    name: Postgres integration (RLS)
+    runs-on: ubuntu-latest
+    # Deliberate deviation from SchoolAssist's own CI (which has no Postgres service
+    # container, treating RLS verification as a manual developer step): the blueprint's
+    # risk R-9 requires the RLS isolation suite to be a required CI gate, and Phase 0's own
+    # scope bullet names "DB + RLS" explicitly. See the implementation plan's CI section.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: zonovia
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Create the least-privilege app role
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -d zonovia -f infrastructure/docker/postgres-init.sql
+
+      - name: Run migrations (as the superuser/migration role)
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://zonovia_app:zonovia_app_password@localhost:5432/zonovia
+          DATABASE_URL_SYNC: postgresql+psycopg2://postgres:postgres@localhost:5432/zonovia
+        run: alembic upgrade head
+
+      - name: Seed system roles + platform tenant
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://zonovia_app:zonovia_app_password@localhost:5432/zonovia
+          JWT_SECRET_KEY: ci-only-secret-not-for-production
+        run: python -m app.seed
+
+      - name: Run the Postgres-marked test suite
+        working-directory: backend
+        env:
+          JWT_SECRET_KEY: ci-only-secret-not-for-production
+          TEST_POSTGRES_APP_DSN: postgresql://zonovia_app:zonovia_app_password@localhost:5432/zonovia
+        run: python -m pytest -v -m postgres

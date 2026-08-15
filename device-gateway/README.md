@@ -1,0 +1,3 @@
+# Zonovia Device Gateway (`device-gateway/`)
+
+**Out of scope for Phase 0.** Per the [architecture blueprint](../docs/architecture/Zonovia-Architecture-Blueprint.md) §14/§30, the independently-deployable Device Gateway (RFID/Vision/Sense hardware ingestion, local durable queue, HTTPS/mTLS sync to Zonovia Core) is built in Phase 6, after the `TrackingProvider` abstraction (§13) has been proven against a real backend integration. This is the one deliberate exception to the modular-monolith rule (ADR-001) — it ships as its own service because it must run physically close to customer hardware, not because it scales independently. This directory is a placeholder so the repo layout matches the blueprint's monorepo structure (§26) from day one.

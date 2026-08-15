@@ -1,0 +1,22 @@
+line-length = 130
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "I", "UP", "B", "ARG"]
+ignore = ["E501"]
+
+[lint.flake8-bugbear]
+# FastAPI's entire dependency-injection system is built on `Depends(...)`/`Query(...)` used
+# as parameter defaults — that's the framework's documented pattern, not the mutable-default
+# footgun B008 exists to catch. Silencing it here (rather than sprinkling `# noqa: B008`
+# through every router) is the standard fix for FastAPI codebases.
+extend-immutable-calls = [
+    "fastapi.Depends", "fastapi.Query", "fastapi.Body", "fastapi.Header", "fastapi.Path",
+    # Our own dependency-factory functions — always called immediately inside Depends(...),
+    # never mutated, same reasoning as the fastapi.* entries above.
+    "app.core.deps.require_permission", "app.core.deps.require_platform_admin", "app.core.deps.require_module",
+    "require_permission", "require_platform_admin", "require_module",
+]
+
+[format]
+skip-magic-trailing-comma = false
