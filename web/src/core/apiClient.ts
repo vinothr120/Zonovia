@@ -87,13 +87,17 @@ function buildUrl(path: string, params?: RequestOptions["params"]): string {
 }
 
 async function rawRequest(path: string, options: RequestOptions, accessToken: string | null): Promise<Response> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const isFormData = options.body instanceof FormData;
+  const headers: Record<string, string> = isFormData ? {} : { "Content-Type": "application/json" };
   if (accessToken && !options.skipAuth) headers.Authorization = `Bearer ${accessToken}`;
 
   return fetch(buildUrl(path, options.params), {
     method: options.method ?? "GET",
     headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    // FormData bodies are passed through untouched so fetch can set its own multipart
+    // boundary — JSON.stringify would mangle a File and the explicit Content-Type above
+    // is skipped for the same reason.
+    body: isFormData ? (options.body as FormData) : options.body !== undefined ? JSON.stringify(options.body) : undefined,
   });
 }
 

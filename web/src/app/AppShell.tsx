@@ -1,16 +1,28 @@
 import type { ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { useState } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Boxes, ChevronDown, LogOut, MapPin, ScanLine, Tag } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 
+const navLinkBase = "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap";
+const navLinkInactive = "text-slate-600 hover:bg-slate-100 hover:text-slate-900";
+const navLinkActive = "bg-[var(--accent-soft)] text-[var(--accent)]";
+
+function navLinkClass({ isActive }: { isActive: boolean }) {
+  return `${navLinkBase} ${isActive ? navLinkActive : navLinkInactive}`;
+}
+
 /**
- * Deliberately slim: one header (app name, signed-in user's email, sign-out button), no
- * sidebar/nav. There's exactly one protected route right now (ScanPage). Add real navigation
- * when a second page exists.
+ * Header (app name, signed-in user's email, sign-out button) unchanged from the nav-less
+ * version, now with a left sidebar that collapses to a horizontal, scrollable tab strip below
+ * the `sm` breakpoint. `main` no longer imposes a global max-width — pages own their own
+ * container width now that a wide asset table exists alongside the narrow scan screen.
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const { me, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [catalogOpen, setCatalogOpen] = useState(location.pathname.startsWith("/catalog"));
 
   async function handleLogout() {
     await logout();
@@ -35,7 +47,56 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
         </div>
       </header>
-      <main className="flex-1 max-w-3xl mx-auto px-4 py-8 w-full">{children}</main>
+
+      <div className="flex-1 flex flex-col sm:flex-row min-w-0">
+        <nav className="shrink-0 bg-white border-b sm:border-b-0 sm:border-r border-slate-200 sm:w-56 sm:sticky sm:top-14 sm:self-start sm:h-[calc(100svh-3.5rem)] overflow-x-auto sm:overflow-y-auto px-2 py-2 sm:py-3">
+          <div className="flex sm:flex-col gap-1">
+            <NavLink to="/assets" className={navLinkClass}>
+              <Boxes className="w-4 h-4 shrink-0" />
+              Assets
+            </NavLink>
+
+            <div className="sm:contents">
+              <button
+                type="button"
+                onClick={() => setCatalogOpen((open) => !open)}
+                aria-expanded={catalogOpen}
+                className={`${navLinkBase} ${navLinkInactive} sm:w-full sm:justify-between`}
+              >
+                <span className="flex items-center gap-2">
+                  <Tag className="w-4 h-4 shrink-0" />
+                  Asset Catalog
+                </span>
+                <ChevronDown className={`w-4 h-4 transition-transform shrink-0 ${catalogOpen ? "rotate-180" : ""}`} />
+              </button>
+              {catalogOpen && (
+                <div className="flex sm:flex-col gap-1 sm:pl-6">
+                  <NavLink to="/catalog/categories" className={navLinkClass}>
+                    Categories
+                  </NavLink>
+                  <NavLink to="/catalog/types" className={navLinkClass}>
+                    Types
+                  </NavLink>
+                  <NavLink to="/catalog/vendors" className={navLinkClass}>
+                    Vendors
+                  </NavLink>
+                </div>
+              )}
+            </div>
+
+            <NavLink to="/locations" className={navLinkClass}>
+              <MapPin className="w-4 h-4 shrink-0" />
+              Locations
+            </NavLink>
+            <NavLink to="/scan" className={navLinkClass}>
+              <ScanLine className="w-4 h-4 shrink-0" />
+              Scan
+            </NavLink>
+          </div>
+        </nav>
+
+        <main className="flex-1 min-w-0 px-4 py-8">{children}</main>
+      </div>
     </div>
   );
 }
