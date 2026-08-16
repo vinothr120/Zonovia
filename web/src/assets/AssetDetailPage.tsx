@@ -10,9 +10,11 @@ import { useLifecycleStates } from "../flow/hooks";
 import { Breadcrumb } from "../core/ui/Breadcrumb";
 import { locationBreadcrumb, useAssetLocations } from "../locations/hooks";
 import { custodianLabel, useUsersLookup } from "../users/hooks";
+import { CustodyActions } from "./CustodyActions";
 import { DocumentsSection } from "./DocumentsSection";
 import { HistoryFeed } from "./HistoryFeed";
 import { IdentifiersSection } from "./IdentifiersSection";
+import { LifecycleActions } from "./LifecycleActions";
 import type { Asset } from "./types";
 
 export function AssetDetailPage() {
@@ -26,6 +28,9 @@ export function AssetDetailPage() {
   const canDelete = me?.permissions.includes("assets.delete") ?? false;
   const canManageDocuments = me?.permissions.includes("assets.manage_documents") ?? false;
   const canViewHistory = me?.permissions.includes("asset_lifecycle.view") ?? false;
+  const canTransition = me?.permissions.includes("assets.transition_lifecycle") ?? false;
+  const canAssign = me?.permissions.includes("assets.assign") ?? false;
+  const canMove = me?.permissions.includes("assets.move") ?? false;
 
   const assetQuery = useQuery({
     queryKey: ["assets", assetId],
@@ -138,6 +143,9 @@ export function AssetDetailPage() {
           <dd className="text-slate-900">{new Date(asset.created_at).toLocaleString()}</dd>
         </dl>
       </div>
+
+      <LifecycleActions asset={asset} canTransition={canTransition} />
+      <CustodyActions asset={asset} canAssign={canAssign} canMove={canMove} />
 
       <IdentifiersSection assetId={asset.id} canEdit={canEdit} />
       <DocumentsSection assetId={asset.id} canManage={canManageDocuments} />
