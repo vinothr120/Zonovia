@@ -19,7 +19,11 @@ from app.maintenance.router import router as maintenance_router
 from app.maintenance.router import warranty_router as maintenance_warranty_router
 from app.tenants.router import router as tenants_router
 from app.tenants.router import settings_router as tenant_settings_router
+from app.track_rfid.router import ingest_router as rfid_ingest_router
+from app.track_rfid.router import read_events_router as rfid_read_events_router
+from app.track_rfid.router import tags_router as rfid_tags_router
 from app.tracking.router import events_router as tracking_events_router
+from app.tracking.router import gateways_router as tracking_gateways_router
 from app.tracking.router import router as tracking_router
 from app.users.router import permissions_router, roles_router
 from app.users.router import router as users_router
@@ -77,6 +81,10 @@ app.include_router(flow_router, prefix=api_prefix)
 app.include_router(lifecycle_config_router, prefix=api_prefix)
 app.include_router(tracking_router, prefix=api_prefix)
 app.include_router(tracking_events_router, prefix=api_prefix)
+app.include_router(tracking_gateways_router, prefix=api_prefix)
 app.include_router(inventory_router, prefix=api_prefix)
 app.include_router(maintenance_router, prefix=api_prefix)
 app.include_router(maintenance_warranty_router, prefix=api_prefix)
+app.include_router(rfid_tags_router, prefix=api_prefix)
+app.include_router(rfid_read_events_router, prefix=api_prefix)
+app.include_router(rfid_ingest_router, prefix=api_prefix)

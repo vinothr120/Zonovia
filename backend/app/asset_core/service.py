@@ -18,7 +18,11 @@ from app.core.audit import write_audit_log
 from app.core.exceptions import ConflictError, NotFoundError, ValidationAppError
 from app.core.storage import get_storage_backend, new_storage_key
 
-_IDENTIFIER_TYPES = ("QR", "BARCODE", "SERIAL")
+_IDENTIFIER_TYPES = ("QR", "BARCODE", "SERIAL", "RFID_EPC")  # RFID_EPC added Phase 6 — the
+# one-line extension point anticipated since Phase 1 (see this tuple's original comment
+# history). AssetIdentifierRepository.get_by_type_value stays the sole EPC->asset lookup;
+# app.track_rfid.models.RfidTag is a 1:1 supplement, never a replacement — see that model's
+# docstring.
 
 
 class AssetCatalogService:

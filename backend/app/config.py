@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     login_max_failed_attempts: int = 5
     login_lockout_minutes: int = 15
 
+    # RfidIngestionService.ingest_batch's default dedup window — a resolved read matching an
+    # existing TrackingEvent for the same (asset_id, device_id) within this many seconds reuses
+    # it rather than creating a new one. Configurable per the module's implementation plan
+    # ("not hardcoded"), overridable per-call via ingest_batch's own dedup_window_seconds param.
+    rfid_dedup_window_seconds: int = 300
+
     # IP-scoped, Redis-backed — independent of the per-account lockout above. See
     # core/rate_limit.py for why both exist.
     login_rate_limit_per_ip: int = 20

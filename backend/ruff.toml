@@ -16,6 +16,8 @@ extend-immutable-calls = [
     # never mutated, same reasoning as the fastapi.* entries above.
     "app.core.deps.require_permission", "app.core.deps.require_platform_admin", "app.core.deps.require_module",
     "require_permission", "require_platform_admin", "require_module",
+    # Phase 6 — gateway auth's own require_module mirror (app/tracking/deps.py).
+    "app.tracking.deps.require_module_for_gateway", "require_module_for_gateway",
 ]
 
 [format]

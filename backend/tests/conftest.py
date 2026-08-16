@@ -1,4 +1,5 @@
 import os
+import secrets
 import tempfile
 import uuid
 
@@ -22,6 +23,8 @@ from app.core.security import create_access_token, hash_password
 from app.main import app
 from app.models_all import Base
 from app.tenants.models import Tenant
+from app.tracking import deps as gateway_deps
+from app.tracking.models import DeviceGateway
 from app.users.models import Permission, Role, RolePermission, User, UserRole
 
 register_all_modules()
@@ -79,8 +82,23 @@ async def client(session_factory):
                 await session.rollback()
                 raise
 
+    async def override_get_gateway_db(payload: gateway_deps.GatewayPayload = Depends(gateway_deps.get_gateway_payload)):  # noqa: ARG001
+        # Mirrors override_get_db above — app.tracking.deps.get_gateway_payload itself needs
+        # no override of its own since it depends on get_public_db, already overridden here.
+        async with session_factory() as session:
+            try:
+                yield session
+                await session.commit()
+            except AppError:
+                await session.commit()
+                raise
+            except Exception:
+                await session.rollback()
+                raise
+
     app.dependency_overrides[deps.get_db] = override_get_db
     app.dependency_overrides[deps.get_public_db] = override_get_public_db
+    app.dependency_overrides[gateway_deps.get_gateway_db] = override_get_gateway_db
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -127,3 +145,28 @@ async def make_user_with_role(
     await db.flush()
     token = create_access_token(user_id=user.id, tenant_id=tenant_id)
     return user, token
+
+
+async def make_device_gateway(
+    db, *, tenant_id: uuid.UUID, name: str = "Test Gateway", status: str = "active"
+) -> tuple[DeviceGateway, str]:
+    """Creates a DeviceGateway row directly (bypassing DeviceGatewayService — same convention
+    as make_role_with_permissions/make_user_with_role above) and returns (gateway, raw_api_key)
+    so a test can issue the two gateway headers against it via gateway_headers() below.
+    api_key_hash is computed the same way app.tracking.deps._hash_gateway_key does, since
+    that's the exact function get_gateway_payload uses to look the key back up."""
+    raw_api_key = secrets.token_urlsafe(32)
+    gateway = DeviceGateway(
+        tenant_id=tenant_id,
+        name=name,
+        status=status,
+        api_key_hash=gateway_deps._hash_gateway_key(raw_api_key),
+        api_key_last4=raw_api_key[-4:],
+    )
+    db.add(gateway)
+    await db.flush()
+    return gateway, raw_api_key
+
+
+def gateway_headers(*, tenant_slug: str, raw_api_key: str) -> dict:
+    return {"X-Gateway-Tenant-Slug": tenant_slug, "X-Gateway-Api-Key": raw_api_key}

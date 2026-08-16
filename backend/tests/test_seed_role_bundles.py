@@ -14,12 +14,15 @@ from app.flow.permissions import MODULE as flow_module
 from app.inventory.permissions import MODULE as inventory_module
 from app.maintenance.permissions import MODULE as maintenance_module
 from app.seed import DEFAULT_ROLE_BUNDLES
+from app.track_rfid.permissions import MODULE as track_rfid_module
 from app.tracking.permissions import MODULE as tracking_module
 
 _ASSET_CORE_AND_FLOW_KEYS = {p.key for p in asset_core_module.permissions} | {p.key for p in flow_module.permissions}
 _TRACKING_KEYS = {p.key for p in tracking_module.permissions}
 _INVENTORY_KEYS = {p.key for p in inventory_module.permissions}
 _MAINTENANCE_KEYS = {p.key for p in maintenance_module.permissions}
+_TRACK_RFID_KEYS = {p.key for p in track_rfid_module.permissions}
+_GATEWAY_INFRA_KEYS = {"tracking.manage_gateways", "tracking.manage_devices"}
 
 
 def test_platform_admin_bundle_is_still_the_none_sentinel():
@@ -53,9 +56,19 @@ def test_viewer_does_not_get_any_mutating_asset_core_or_flow_permission():
     assert viewer_keys.isdisjoint(mutating_keys)
 
 
-def test_tenant_admin_and_member_both_get_every_tracking_permission():
+def test_tenant_admin_gets_every_tracking_permission_including_gateway_management():
     assert _TRACKING_KEYS <= set(DEFAULT_ROLE_BUNDLES["Tenant Admin"])
-    assert _TRACKING_KEYS <= set(DEFAULT_ROLE_BUNDLES["Member"])
+
+
+def test_member_gets_scan_and_view_but_not_gateway_management():
+    """Phase 6 split tracking.scan/tracking.view (ordinary Member/Viewer split) from
+    tracking.manage_gateways/manage_devices (Tenant-Admin-only infrastructure permissions,
+    see the comment on Tenant Admin's bundle in app/seed.py) — Member gets the former, not the
+    latter."""
+    member_keys = set(DEFAULT_ROLE_BUNDLES["Member"])
+    expected = _TRACKING_KEYS - _GATEWAY_INFRA_KEYS
+    assert expected <= member_keys
+    assert member_keys.isdisjoint(_GATEWAY_INFRA_KEYS)
 
 
 def test_viewer_gets_only_tracking_view_not_tracking_scan():
@@ -99,3 +112,31 @@ def test_viewer_gets_only_maintenance_view():
     viewer_keys = set(DEFAULT_ROLE_BUNDLES["Viewer"])
     assert "maintenance.view" in viewer_keys
     assert viewer_keys.isdisjoint(_MAINTENANCE_KEYS - {"maintenance.view"})
+
+
+def test_tenant_admin_gets_the_gateway_infrastructure_permissions():
+    """tracking.manage_gateways/manage_devices are Tenant-Admin-only, one tier — a leaked API
+    key is a real security surface, no view-only audience for infrastructure objects."""
+    tenant_admin_keys = set(DEFAULT_ROLE_BUNDLES["Tenant Admin"])
+    assert _GATEWAY_INFRA_KEYS <= tenant_admin_keys
+
+
+def test_member_does_not_get_the_gateway_infrastructure_permissions():
+    member_keys = set(DEFAULT_ROLE_BUNDLES["Member"])
+    assert member_keys.isdisjoint(_GATEWAY_INFRA_KEYS)
+
+
+def test_viewer_does_not_get_the_gateway_infrastructure_permissions():
+    viewer_keys = set(DEFAULT_ROLE_BUNDLES["Viewer"])
+    assert viewer_keys.isdisjoint(_GATEWAY_INFRA_KEYS)
+
+
+def test_tenant_admin_and_member_both_get_every_track_rfid_permission():
+    assert _TRACK_RFID_KEYS <= set(DEFAULT_ROLE_BUNDLES["Tenant Admin"])
+    assert _TRACK_RFID_KEYS <= set(DEFAULT_ROLE_BUNDLES["Member"])
+
+
+def test_viewer_gets_only_track_rfid_view():
+    viewer_keys = set(DEFAULT_ROLE_BUNDLES["Viewer"])
+    assert "track_rfid.view" in viewer_keys
+    assert viewer_keys.isdisjoint(_TRACK_RFID_KEYS - {"track_rfid.view"})

@@ -81,6 +81,14 @@ DEFAULT_ROLE_BUNDLES: dict[str, list[str] | None] = {
         "maintenance.manage_tickets",
         "maintenance.manage_warranty",
         "maintenance.manage_schedules",
+        # Phase 6 — RFID / Device Gateway: Device/DeviceGateway management is Tenant-Admin-only
+        # (a leaked API key is a real security surface, one tier only — see
+        # app/tracking/permissions.py's comment), so only Tenant Admin gets these two. Both
+        # track_rfid permissions follow the ordinary Member/Viewer split.
+        "tracking.manage_gateways",
+        "tracking.manage_devices",
+        "track_rfid.manage_tags",
+        "track_rfid.view",
     ],
     "Member": [
         "users.view",
@@ -111,6 +119,11 @@ DEFAULT_ROLE_BUNDLES: dict[str, list[str] | None] = {
         "maintenance.manage_tickets",
         "maintenance.manage_warranty",
         "maintenance.manage_schedules",
+        # Phase 6 — RFID / Device Gateway: Member gets track_rfid's own two permissions, but
+        # NOT tracking.manage_gateways/manage_devices — those are Tenant-Admin-only
+        # infrastructure permissions, see the comment on Tenant Admin's bundle above.
+        "track_rfid.manage_tags",
+        "track_rfid.view",
     ],
     "Viewer": [
         "users.view",
@@ -124,6 +137,9 @@ DEFAULT_ROLE_BUNDLES: dict[str, list[str] | None] = {
         "inventory.view",
         # Phase 4 — Maintenance & Warranty: Viewer gets maintenance.view only.
         "maintenance.view",
+        # Phase 6 — RFID / Device Gateway: Viewer gets track_rfid.view only, same split as
+        # every other module's Viewer bundle.
+        "track_rfid.view",
     ],
 }
 
@@ -238,6 +254,9 @@ async def main() -> None:
         # inventory — give acme-demo an explicit source="seed" entitlement row so the demo
         # environment can exercise it too.
         await ensure_module_entitlement(db, tenant.id, module_key="maintenance", enabled=True)
+        # Phase 6 — RFID / Device Gateway registers with default_enabled=False too (its own
+        # "Zonovia RFID" tier) — same reasoning as inventory/maintenance above.
+        await ensure_module_entitlement(db, tenant.id, module_key="track-rfid", enabled=True)
 
         demo_users = [
             ("admin@zonovia.example", "Tenant Admin"),

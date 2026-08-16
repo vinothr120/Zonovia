@@ -136,7 +136,8 @@ class AssetRead(BaseModel):
 
 
 class AssetIdentifierCreate(BaseModel):
-    identifier_type: str = Field(pattern="^(QR|BARCODE|SERIAL)$")
+    # Mirrors app.asset_core.service._IDENTIFIER_TYPES exactly — RFID_EPC added Phase 6.
+    identifier_type: str = Field(pattern="^(QR|BARCODE|SERIAL|RFID_EPC)$")
     value: str
     is_primary: bool = False
 

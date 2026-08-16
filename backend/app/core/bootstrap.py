@@ -12,6 +12,7 @@ def register_all_modules() -> None:
     from app.inventory.permissions import MODULE as inventory_module
     from app.maintenance.permissions import MODULE as maintenance_module
     from app.tenants.permissions import MODULE as platform_module
+    from app.track_rfid.permissions import MODULE as track_rfid_module
     from app.tracking.permissions import MODULE as tracking_module
     from app.users.permissions import MODULE as users_module
 
@@ -25,6 +26,7 @@ def register_all_modules() -> None:
         tracking_module,
         inventory_module,
         maintenance_module,
+        track_rfid_module,
     ):
         register_module(module)
 
@@ -34,9 +36,11 @@ def register_all_tracking_providers() -> None:
     scan request can look one up. Mirrors register_all_modules's shape and reasoning: adding
     a new provider later (e.g. Phase 6's track_rfid module registering an RFIDProvider) means
     adding one import here, without app/tracking/ ever importing from the new module."""
+    from app.track_rfid.providers.rfid import RFIDProvider
     from app.tracking.providers.barcode import BarcodeProvider
     from app.tracking.providers.qr import QRProvider
     from app.tracking.providers.registry import register_provider
 
     register_provider(QRProvider())
     register_provider(BarcodeProvider())
+    register_provider(RFIDProvider())

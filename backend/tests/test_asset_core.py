@@ -143,9 +143,17 @@ async def test_asset_identifier_allow_list_and_single_primary_enforcement(client
     asset_id = asset_resp.json()["data"]["id"]
 
     bad_type = await client.post(
-        f"/api/v1/assets/{asset_id}/identifiers", json={"identifier_type": "RFID_EPC", "value": "abc"}, headers=headers
+        f"/api/v1/assets/{asset_id}/identifiers", json={"identifier_type": "NFC_TAG", "value": "abc"}, headers=headers
     )
     assert bad_type.status_code == 422
+
+    # RFID_EPC (Phase 6) IS in the allow-list now — a bare identifier with no app.track_rfid.
+    # RfidTag row is valid, same non-exclusive relationship QR/Barcode already have; see
+    # app.track_rfid.models.RfidTag's docstring.
+    rfid_bare = await client.post(
+        f"/api/v1/assets/{asset_id}/identifiers", json={"identifier_type": "RFID_EPC", "value": "E200001A"}, headers=headers
+    )
+    assert rfid_bare.status_code == 201, rfid_bare.text
 
     first = await client.post(
         f"/api/v1/assets/{asset_id}/identifiers",
