@@ -1,6 +1,6 @@
 # Zonovia — Implementation Status
 
-**Last updated:** 2026-08-16, after the Inventory web UI increment (`ba609ed`).
+**Last updated:** 2026-08-16, after the Maintenance web UI increment (`5a13b11`).
 
 This document tracks what's actually built and verified, as opposed to what the [architecture blueprint](architecture/Zonovia-Architecture-Blueprint.md) describes as the target design. The blueprint is the destination; this file is "where are we on the map right now," kept current at each increment so a later session — human or AI — doesn't have to reconstruct it from commit messages. When this file and the blueprint disagree on a detail, a note here explains why (usually: a blueprint ambiguity resolved during implementation, cited by section).
 
@@ -27,7 +27,7 @@ This document tracks what's actually built and verified, as opposed to what the 
 | — | Web UI: Asset Core (catalog, locations, asset CRUD) | ✅ | — | ✅ (real browser) | |
 | — | Web UI: Flow write actions (transition, assign/unassign, move) | ✅ | — | ✅ (real browser) | |
 | — | Web UI: Inventory | ✅ | — | ✅ (real browser) | First UI for a paid-tier ("Zonovia Manage") module; first with irreversible actions (confirm dialogs) |
-| — | Web UI: Maintenance | ❌ not started | — | — | Backend complete, zero UI |
+| — | Web UI: Maintenance | ✅ | — | ✅ (real browser) | Warranty/schedules embedded on the asset page; tickets get their own pages + a new reusable AssetPicker |
 | — | Web UI: RFID | ❌ not started | — | — | Backend complete, zero UI |
 
 Backend combined test suite: **229/229 passing**, ruff clean, as of Phase 6.
@@ -85,16 +85,19 @@ The only part of this project with a fully-available, fully-verifiable toolchain
 - **Flow write actions** (increment 2): lifecycle transition, assign/unassign custodian, and move controls on the asset detail page — computed against the tenant's actual configured lifecycle graph, never a hardcoded state list.
 - **Inventory** (increment 3, `/inventory`): verification cycles, discrepancy/missing-asset reporting, reconciliation. First UI increment for a `default_enabled=False` module — a 403 from "not licensed" and a 403 from "missing permission" are deliberately indistinguishable in the UI, since the backend doesn't expose a way to tell them apart either. First increment with genuinely irreversible actions (Complete/Cancel a cycle) — these get a `window.confirm()`, unlike every reversible action in the Flow-actions increment. Asset names for report rows resolve via per-id lookups sharing `AssetDetailPage`'s query key, not a new batch endpoint.
 
-Not yet built: any UI for Maintenance or RFID (both have complete, tested backends and zero web presence — reachable only via curl/Swagger today).
+- **Maintenance** (increment 4): warranty and service schedules are embedded sections on `AssetDetailPage` (both are genuinely asset-scoped by schema — no picker needed), while tickets get their own tenant-wide `/maintenance/tickets` pages plus a new reusable `AssetPicker` type-ahead component for the one entry point that isn't already asset-scoped. A warranty's absence is a 404 handled as "not created yet" (inline create form), not an error state. Unlike Inventory's `reconcile`, nothing in this module is Tenant-Admin-reserved — Member has full parity on all four `maintenance.*` permissions, verified independently rather than assumed from the previous increment's different pattern. Accepted, disclosed shortcoming: a non-entitled tenant sees three independent small error boxes on the asset page (one per embedded section) rather than one collapsed error.
+
+Not yet built: any UI for RFID (backend complete, zero web presence — reachable only via curl/Swagger today).
 
 **Known side finding, not yet fixed:** `web/src/tracking/types.ts`'s `IdentifierType` (`"QR" | "BARCODE"` only) is stale relative to `web/src/assets/types.ts`'s authoritative set (`+ "SERIAL" | "RFID_EPC"`, confirmed to mirror the backend's actual allow-list). `ScanPage.tsx`'s manual-entry identifier-type select is therefore narrower than what the backend actually accepts. Found during the Inventory increment (which correctly imports from `assets/types.ts` instead), not fixed there since it's out of scope for that increment — worth a small follow-up fix.
 
 ## Next candidates (not yet decided between)
 
-1. **Web UI for Maintenance** — tickets, warranty, service schedules. Now the more operationally central of the two remaining backend-only modules (Inventory is done).
-2. **Web UI for RFID** — gateway/device registration, tag management, read history. More of an admin/setup surface than a daily-use one.
-3. **Fix `tracking/types.ts`'s stale `IdentifierType`** — small, isolated, found during the Inventory increment (see the note above).
-4. **Phase 7 — Workflow & Integrations** — approval engine, notifications, first external connector. New backend domain, not yet started.
-5. **`device-gateway/` deployable service** — completes the Phase 6 RFID story with a real (simulated-hardware) separate deployment.
-6. **Mobile Phase 5.2** — offline storage/sync, blocked behind someone confirming 5.1 compiles.
-7. **Closing the Postgres/RLS gap** — see [Known gaps](#known-gaps); deliberately deferred, not urgent, but the honest bar for "production-ready" needs it eventually.
+All three optionally-licensed modules with UI (Inventory, Maintenance) are now done — only RFID remains for full module UI coverage.
+
+1. **Web UI for RFID** — gateway/device registration, tag management, read history. More of an admin/setup surface than a daily-use one; the last remaining module without any web presence.
+2. **Fix `tracking/types.ts`'s stale `IdentifierType`** — small, isolated, found during the Inventory increment.
+3. **Phase 7 — Workflow & Integrations** — approval engine, notifications, first external connector. New backend domain, not yet started.
+4. **`device-gateway/` deployable service** — completes the Phase 6 RFID story with a real (simulated-hardware) separate deployment.
+5. **Mobile Phase 5.2** — offline storage/sync, blocked behind someone confirming 5.1 compiles.
+6. **Closing the Postgres/RLS gap** — see [Known gaps](#known-gaps); deliberately deferred, not urgent, but the honest bar for "production-ready" needs it eventually.
