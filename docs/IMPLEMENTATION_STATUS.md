@@ -1,6 +1,6 @@
 # Zonovia — Implementation Status
 
-**Last updated:** 2026-08-16, after the Flow write-actions web UI increment (`ba38483`).
+**Last updated:** 2026-08-16, after the Inventory web UI increment (`ba609ed`).
 
 This document tracks what's actually built and verified, as opposed to what the [architecture blueprint](architecture/Zonovia-Architecture-Blueprint.md) describes as the target design. The blueprint is the destination; this file is "where are we on the map right now," kept current at each increment so a later session — human or AI — doesn't have to reconstruct it from commit messages. When this file and the blueprint disagree on a detail, a note here explains why (usually: a blueprint ambiguity resolved during implementation, cited by section).
 
@@ -26,7 +26,7 @@ This document tracks what's actually built and verified, as opposed to what the 
 | 7 | Workflow & Integrations | ❌ not started | — | — | |
 | — | Web UI: Asset Core (catalog, locations, asset CRUD) | ✅ | — | ✅ (real browser) | |
 | — | Web UI: Flow write actions (transition, assign/unassign, move) | ✅ | — | ✅ (real browser) | |
-| — | Web UI: Inventory | ❌ not started | — | — | Backend complete, zero UI |
+| — | Web UI: Inventory | ✅ | — | ✅ (real browser) | First UI for a paid-tier ("Zonovia Manage") module; first with irreversible actions (confirm dialogs) |
 | — | Web UI: Maintenance | ❌ not started | — | — | Backend complete, zero UI |
 | — | Web UI: RFID | ❌ not started | — | — | Backend complete, zero UI |
 
@@ -83,14 +83,17 @@ The only part of this project with a fully-available, fully-verifiable toolchain
 - **Login + Scan** (Phase 2): `/login`, `/scan`.
 - **Asset Core** (increment 1): catalog management (`/catalog/categories|types|vendors`), location hierarchy browser (`/locations`), full asset list/detail/create/edit (`/assets`, `/assets/new`, `/assets/:id`, `/assets/:id/edit`) with real pagination, identifiers, and documents. Client-side reference-data hooks resolve raw foreign-key ids into names, since the API deliberately doesn't denormalize them.
 - **Flow write actions** (increment 2): lifecycle transition, assign/unassign custodian, and move controls on the asset detail page — computed against the tenant's actual configured lifecycle graph, never a hardcoded state list.
+- **Inventory** (increment 3, `/inventory`): verification cycles, discrepancy/missing-asset reporting, reconciliation. First UI increment for a `default_enabled=False` module — a 403 from "not licensed" and a 403 from "missing permission" are deliberately indistinguishable in the UI, since the backend doesn't expose a way to tell them apart either. First increment with genuinely irreversible actions (Complete/Cancel a cycle) — these get a `window.confirm()`, unlike every reversible action in the Flow-actions increment. Asset names for report rows resolve via per-id lookups sharing `AssetDetailPage`'s query key, not a new batch endpoint.
 
-Not yet built: any UI for Inventory, Maintenance, or RFID (all three have complete, tested backends and zero web presence — reachable only via curl/Swagger today).
+Not yet built: any UI for Maintenance or RFID (both have complete, tested backends and zero web presence — reachable only via curl/Swagger today).
+
+**Known side finding, not yet fixed:** `web/src/tracking/types.ts`'s `IdentifierType` (`"QR" | "BARCODE"` only) is stale relative to `web/src/assets/types.ts`'s authoritative set (`+ "SERIAL" | "RFID_EPC"`, confirmed to mirror the backend's actual allow-list). `ScanPage.tsx`'s manual-entry identifier-type select is therefore narrower than what the backend actually accepts. Found during the Inventory increment (which correctly imports from `assets/types.ts` instead), not fixed there since it's out of scope for that increment — worth a small follow-up fix.
 
 ## Next candidates (not yet decided between)
 
-1. **Web UI for Inventory** — verification cycles, discrepancy reporting, reconciliation. Most operationally central of the three remaining backend-only modules.
-2. **Web UI for Maintenance** — tickets, warranty, service schedules.
-3. **Web UI for RFID** — gateway/device registration, tag management, read history. More of an admin/setup surface than a daily-use one.
+1. **Web UI for Maintenance** — tickets, warranty, service schedules. Now the more operationally central of the two remaining backend-only modules (Inventory is done).
+2. **Web UI for RFID** — gateway/device registration, tag management, read history. More of an admin/setup surface than a daily-use one.
+3. **Fix `tracking/types.ts`'s stale `IdentifierType`** — small, isolated, found during the Inventory increment (see the note above).
 4. **Phase 7 — Workflow & Integrations** — approval engine, notifications, first external connector. New backend domain, not yet started.
 5. **`device-gateway/` deployable service** — completes the Phase 6 RFID story with a real (simulated-hardware) separate deployment.
 6. **Mobile Phase 5.2** — offline storage/sync, blocked behind someone confirming 5.1 compiles.
