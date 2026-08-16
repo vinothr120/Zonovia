@@ -2,33 +2,44 @@
 
 Zonovia is Virasaka's enterprise asset-visibility platform — RFID, computer vision, and IoT/BLE sensing fused with an AI layer into one live model of every physical asset an organization owns. See [`docs/architecture/Zonovia-Architecture-Blueprint.md`](docs/architecture/Zonovia-Architecture-Blueprint.md) for the full product and technical architecture.
 
-## Current status: Phase 0 — Platform Core Foundation
+## Current status
 
-Per the blueprint's roadmap (§30), this repository currently implements exactly **Phase 0**: repo + CI/CD, Platform Core (tenant, user, RBAC, licensing/entitlements stub, audit), DB + Row-Level Security, and a Docker Compose dev environment. It does not yet include Asset Core (Phase 1) or any tracking technology, AI, or UI — `web/`, `mobile/`, `device-gateway/`, and `sdks/` are placeholder directories only, each with a README explaining what phase fills them in.
+**See [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md) for the up-to-date, phase-by-phase build/test/verify status, known gaps (Postgres/RLS never run, mobile never compiled, RFID hardware simulated), and architectural decisions made along the way — kept current at every increment, read that file first, not this summary.**
 
-Zonovia's Phase 0 is deliberately modeled on Virasaka's own shipped sibling product, SchoolAssist (identical stack: FastAPI + SQLAlchemy 2.0 async + Alembic + PostgreSQL 16 + Redis + PyJWT + Argon2) — see the implementation plan referenced from this repo's history for the exact file-by-file mapping.
+As of this writing: Platform Core, Asset Core + Flow, Tracking (QR/barcode), Inventory & Audit, Maintenance & Warranty, and RFID/Device Gateway (backend domain) are all built and tested (229/229 passing). A native Flutter mobile shell exists but has never been compiled (no Flutter SDK available in the environment that built it). A real multi-page web UI exists covering Asset Core (catalog, locations, asset CRUD) and Flow write actions (transition/assign/move) — Inventory, Maintenance, and RFID are backend-complete but have no web UI yet.
+
+Zonovia's backend stack is deliberately modeled on Virasaka's own shipped sibling product, SchoolAssist (FastAPI + SQLAlchemy 2.0 async + Alembic + PostgreSQL 16 + Redis + PyJWT + Argon2); the web frontend likewise mirrors SchoolAssist's web conventions (React + TS + Vite, hand-written fetch client, no component library); the mobile shell mirrors SchoolAssist's Flutter app.
 
 ## Repository layout
 
 ```
-backend/            FastAPI modular monolith — Platform Core only in Phase 0
+backend/            FastAPI modular monolith
   app/
     core/            base model/repository, DB session + RLS session-var plumbing, JWT/Argon2
-                      security, exceptions, module registry, audit, Redis cache + rate limit,
-                      connection router (Tenant Routing Table seam, ADR-003)
+                      security, exceptions, module registry, audit, Redis cache + rate limit
     tenants/         Tenant, TenantConnectionRoute, TenantSetting
     users/           User, Role, Permission, RolePermission, UserRole — RBAC
     auth/            JWT access/refresh tokens, login lockout, IP rate limiting
-    audit/           append-only audit log (read-only API; every module writes through
-                      core.audit.write_audit_log)
-    entitlements/     module-entitlement stub (ADR-007) — TenantModuleEntitlement,
-                      require_module() gate
-  migrations/        Alembic — 0001 schema, 0002 Row-Level Security, 0003 app-role grants
+    audit/           append-only audit log
+    entitlements/    module-entitlement gate (require_module()) — three tiers: bundled/free,
+                      "Zonovia Manage" (inventory, maintenance), "Zonovia RFID" (track_rfid)
+    asset_core/      asset registry, categories/types/vendors, hierarchical locations,
+                      identifiers, documents
+    flow/            "Zonovia Flow" — configurable lifecycle state/transition engine,
+                      custody assignment, movement
+    tracking/        TrackingProvider abstraction (QR/Barcode), Device/DeviceGateway,
+                      gateway (non-user) auth
+    inventory/       verification cycles, discrepancy/missing-asset reporting, reconciliation
+    maintenance/     tickets, warranty, interval-based service schedules
+    track_rfid/      RFID tag registration, batched read ingestion + deduplication
+  migrations/        Alembic, 0001-0015
   tests/             pytest — SQLite unit tier (default) + Postgres RLS integration tier
-                      (`-m postgres`)
-web/, mobile/, device-gateway/, sdks/    placeholders — see each directory's README
-infrastructure/docker/                   postgres-init scripts (dev + prod)
-docs/                architecture blueprint + multi-tenancy/authorization/database notes
+                      (`-m postgres`, see docs/IMPLEMENTATION_STATUS.md — not yet run for real)
+web/                 React + TS + Vite — login, scan, asset core CRUD + Flow actions
+mobile/              Flutter — shell, auth, online scanning (never compiled, see status doc)
+device-gateway/, sdks/    still placeholders
+infrastructure/docker/    postgres-init scripts (dev + prod)
+docs/                architecture blueprint + IMPLEMENTATION_STATUS.md + design notes
 ```
 
 ## Running locally
@@ -74,6 +85,23 @@ alembic upgrade head
 python -m app.seed
 pytest -v -m postgres
 ```
+
+### Web app
+
+```bash
+cd web
+npm install
+cp .env.example .env.local   # VITE_API_BASE_URL, defaults to http://localhost:8000/api/v1
+npm run dev                  # http://localhost:5173
+npm run build                # tsc -b && vite build
+npm run lint                 # oxlint
+```
+
+Log in with any of the seeded accounts above (tenant slug `acme-demo` for the non-platform ones). See `web/src/App.tsx` for the route table.
+
+### Mobile app
+
+See `mobile/README.md` — **this code has never been compiled**, no Flutter SDK was available in the environment that built it. Static checks (rename completeness, model-field contract vs. the live backend schemas) passed, but `flutter pub get && flutter run` needs a real first pass before it can be trusted.
 
 ### Production
 
