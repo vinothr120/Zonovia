@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { Boxes, ChevronDown, ClipboardList, LogOut, MapPin, ScanLine, Tag, Wrench } from "lucide-react";
+import { Boxes, ChevronDown, ClipboardList, LogOut, MapPin, Radio, ScanLine, Tag, Wrench } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 
 const navLinkBase = "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap";
@@ -24,6 +24,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [catalogOpen, setCatalogOpen] = useState(location.pathname.startsWith("/catalog"));
   const [maintenanceOpen, setMaintenanceOpen] = useState(location.pathname.startsWith("/maintenance"));
+  const [rfidOpen, setRfidOpen] = useState(location.pathname.startsWith("/rfid"));
+  const canManageGateways = me?.permissions.includes("tracking.manage_gateways") ?? false;
 
   async function handleLogout() {
     await logout();
@@ -114,6 +116,36 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </NavLink>
                   <NavLink to="/maintenance/schedules/due" className={navLinkClass}>
                     Due schedules
+                  </NavLink>
+                </div>
+              )}
+            </div>
+
+            <div className="sm:contents">
+              <button
+                type="button"
+                onClick={() => setRfidOpen((open) => !open)}
+                aria-expanded={rfidOpen}
+                className={`${navLinkBase} ${navLinkInactive} sm:w-full sm:justify-between`}
+              >
+                <span className="flex items-center gap-2">
+                  <Radio className="w-4 h-4 shrink-0" />
+                  RFID / Devices
+                </span>
+                <ChevronDown className={`w-4 h-4 transition-transform shrink-0 ${rfidOpen ? "rotate-180" : ""}`} />
+              </button>
+              {rfidOpen && (
+                <div className="flex sm:flex-col gap-1 sm:pl-6">
+                  {canManageGateways && (
+                    <NavLink to="/rfid/gateways" className={navLinkClass}>
+                      Gateways
+                    </NavLink>
+                  )}
+                  <NavLink to="/rfid/tags" className={navLinkClass}>
+                    Tags
+                  </NavLink>
+                  <NavLink to="/rfid/read-events" className={navLinkClass}>
+                    Read events
                   </NavLink>
                 </div>
               )}

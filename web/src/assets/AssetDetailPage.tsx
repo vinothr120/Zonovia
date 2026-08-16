@@ -13,6 +13,7 @@ import { custodianLabel, useUsersLookup } from "../users/hooks";
 import { AssetScheduleSection } from "../maintenance/AssetScheduleSection";
 import { AssetTicketsSection } from "../maintenance/AssetTicketsSection";
 import { AssetWarrantySection } from "../maintenance/AssetWarrantySection";
+import { AssetRfidTagSection } from "../rfid/AssetRfidTagSection";
 import { CustodyActions } from "./CustodyActions";
 import { DocumentsSection } from "./DocumentsSection";
 import { HistoryFeed } from "./HistoryFeed";
@@ -38,6 +39,8 @@ export function AssetDetailPage() {
   const canManageWarranty = me?.permissions.includes("maintenance.manage_warranty") ?? false;
   const canManageSchedules = me?.permissions.includes("maintenance.manage_schedules") ?? false;
   const canManageTickets = me?.permissions.includes("maintenance.manage_tickets") ?? false;
+  const canViewRfid = me?.permissions.includes("track_rfid.view") ?? false;
+  const canManageRfidTags = me?.permissions.includes("track_rfid.manage_tags") ?? false;
 
   const assetQuery = useQuery({
     queryKey: ["assets", assetId],
@@ -156,6 +159,7 @@ export function AssetDetailPage() {
 
       <IdentifiersSection assetId={asset.id} canEdit={canEdit} />
       <DocumentsSection assetId={asset.id} canManage={canManageDocuments} />
+      <AssetRfidTagSection assetId={asset.id} canView={canViewRfid} canManage={canManageRfidTags} />
       <AssetWarrantySection assetId={asset.id} canView={canViewMaintenance} canManage={canManageWarranty} />
       <AssetScheduleSection assetId={asset.id} canView={canViewMaintenance} canManage={canManageSchedules} />
       <AssetTicketsSection assetId={asset.id} canView={canViewMaintenance} canManageTickets={canManageTickets} />

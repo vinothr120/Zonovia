@@ -18,6 +18,10 @@ import { TicketsListPage } from "./maintenance/TicketsListPage";
 import { TicketFormPage } from "./maintenance/TicketFormPage";
 import { TicketDetailPage } from "./maintenance/TicketDetailPage";
 import { SchedulesDueReportPage } from "./maintenance/SchedulesDueReportPage";
+import { GatewaysListPage } from "./rfid/GatewaysListPage";
+import { GatewayFormPage } from "./rfid/GatewayFormPage";
+import { RfidTagsListPage } from "./rfid/RfidTagsListPage";
+import { ReadEventsPage } from "./rfid/ReadEventsPage";
 
 function Protected({ children }: { children: ReactNode }) {
   return (
@@ -166,6 +170,39 @@ function App() {
         element={
           <Protected>
             <SchedulesDueReportPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/rfid/gateways"
+        element={
+          <Protected>
+            <GatewaysListPage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/rfid/gateways/new"
+        element={
+          <Protected>
+            <GatewayFormPage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/rfid/tags"
+        element={
+          <Protected>
+            <RfidTagsListPage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/rfid/read-events"
+        element={
+          <Protected>
+            <ReadEventsPage />
           </Protected>
         }
       />
