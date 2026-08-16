@@ -1,6 +1,6 @@
 # Zonovia — Implementation Status
 
-**Last updated:** 2026-08-16, after the Maintenance web UI increment (`5a13b11`).
+**Last updated:** 2026-08-16, after the RFID web UI increment (`57dc27c`).
 
 This document tracks what's actually built and verified, as opposed to what the [architecture blueprint](architecture/Zonovia-Architecture-Blueprint.md) describes as the target design. The blueprint is the destination; this file is "where are we on the map right now," kept current at each increment so a later session — human or AI — doesn't have to reconstruct it from commit messages. When this file and the blueprint disagree on a detail, a note here explains why (usually: a blueprint ambiguity resolved during implementation, cited by section).
 
@@ -28,7 +28,7 @@ This document tracks what's actually built and verified, as opposed to what the 
 | — | Web UI: Flow write actions (transition, assign/unassign, move) | ✅ | — | ✅ (real browser) | |
 | — | Web UI: Inventory | ✅ | — | ✅ (real browser) | First UI for a paid-tier ("Zonovia Manage") module; first with irreversible actions (confirm dialogs) |
 | — | Web UI: Maintenance | ✅ | — | ✅ (real browser) | Warranty/schedules embedded on the asset page; tickets get their own pages + a new reusable AssetPicker |
-| — | Web UI: RFID | ❌ not started | — | — | Backend complete, zero UI |
+| — | Web UI: RFID | ✅ | — | ⚠️ static + login-redirect only | Backend/Postgres not running in this environment, no full authenticated pass — see notes below |
 
 Backend combined test suite: **229/229 passing**, ruff clean, as of Phase 6.
 
@@ -71,6 +71,8 @@ Places where the blueprint was ambiguous, self-contradictory, or silent, and a c
 - **Inventory's relationship with Flow** (Phase 3): same reasoning, same resolution — reconciling a discrepancy records the decision only; executing it (an actual location/lifecycle change) is a separate, explicit Flow API call. This is the same "record, don't execute" boundary Phase 4 later confirmed independently for Maintenance, and the blueprint's own §646 (future Workflow-engine scope) explicitly names both "maintenance approval" and "inventory reconciliation approval" side by side as the intended eventual hook point for this exact kind of cross-module action.
 - **`Device`/`DeviceGateway` ownership** (Phase 6): confirmed to belong to the generic `tracking-engine` module (already bundled/free since Phase 2), not the new RFID-specific `track_rfid` module — they're shared abstraction infrastructure a future `track-vision`/`track-sense` module would also need, per the blueprint's own module dependency table.
 - **RFID read deduplication key** (Phase 6): deduplicated per `(asset_id, device_id)`, not `asset_id` alone — a different reader picking up the same asset within the dedup window still produces an immediate new event, so a genuine zone transition is never silently swallowed by the window.
+- **RFID gateway/device permission cliff, confirmed against `seed.py`** (RFID UI increment): `tracking.manage_gateways`/`manage_devices` are Tenant-Admin-only — Member gets zero access, unlike every other module built so far where Member has had substantial or full access. `track_rfid.manage_tags`/`view` (tag management) *are* on Member, so the UI splits gating accordingly: gateway/device controls render nothing for non-Tenant-Admin (no disabled shells, per the established convention), tag controls gate on the separate, broader `track_rfid.manage_tags` permission.
+- **No date-range filter exists on RFID read events** (RFID UI increment): `RfidReadEventRepository.list_filtered` only supports `resolved`/`device_id`/`tag_epc` — `read_at` is used solely for ordering, never filtering. The web UI's `ReadEventsPage` was designed around device + date-range filters before this was checked directly against `track_rfid/repository.py`; the date-range control was dropped and a `resolved` filter substituted, since it's real and serves the same diagnostic purpose.
 
 ## Mobile (Phase 5.1)
 
@@ -87,17 +89,19 @@ The only part of this project with a fully-available, fully-verifiable toolchain
 
 - **Maintenance** (increment 4): warranty and service schedules are embedded sections on `AssetDetailPage` (both are genuinely asset-scoped by schema — no picker needed), while tickets get their own tenant-wide `/maintenance/tickets` pages plus a new reusable `AssetPicker` type-ahead component for the one entry point that isn't already asset-scoped. A warranty's absence is a 404 handled as "not created yet" (inline create form), not an error state. Unlike Inventory's `reconcile`, nothing in this module is Tenant-Admin-reserved — Member has full parity on all four `maintenance.*` permissions, verified independently rather than assumed from the previous increment's different pattern. Accepted, disclosed shortcoming: a non-entitled tenant sees three independent small error boxes on the asset page (one per embedded section) rather than one collapsed error.
 
-Not yet built: any UI for RFID (backend complete, zero web presence — reachable only via curl/Swagger today).
+- **RFID / Device Gateway** (increment 5, `web/src/rfid/`): closes out web UI coverage of every backend module built through Phase 6. `/rfid/gateways` (list + inline per-row expand for devices, revoke) and `/rfid/gateways/new` are Tenant-Admin-only end to end, matching the permission cliff noted above. `/rfid/tags` (tenant-wide, reuses `AssetPicker`) and a new `AssetRfidTagSection` embedded on `AssetDetailPage` are available to Member via `track_rfid.manage_tags`. `/rfid/read-events` is a diagnostic tenant-wide feed, Prev/Next-paged (no `total` in the response, same as Inventory/tag lists), with device names resolved via a new `useDevicesLookup()` (no flat device-list endpoint exists, so it's assembled by listing devices per gateway — degrades to showing raw device ids for Member/Viewer, who can't reach the underlying gateway endpoints). The gateway-creation flow implements a genuine one-time-secret reveal: the raw API key is returned exactly once by the backend (never logged, never stored beyond a hash) and the create form swaps in-place for a warning panel (copy button, required acknowledgment checkbox gating the only exit, `beforeunload` guard) rather than navigating away, since there is no way to ever see the key again after that one response.
+
+All modules built through Phase 6 now have web UI coverage.
 
 **Known side finding, not yet fixed:** `web/src/tracking/types.ts`'s `IdentifierType` (`"QR" | "BARCODE"` only) is stale relative to `web/src/assets/types.ts`'s authoritative set (`+ "SERIAL" | "RFID_EPC"`, confirmed to mirror the backend's actual allow-list). `ScanPage.tsx`'s manual-entry identifier-type select is therefore narrower than what the backend actually accepts. Found during the Inventory increment (which correctly imports from `assets/types.ts` instead), not fixed there since it's out of scope for that increment — worth a small follow-up fix.
 
 ## Next candidates (not yet decided between)
 
-All three optionally-licensed modules with UI (Inventory, Maintenance) are now done — only RFID remains for full module UI coverage.
+Every backend module built through Phase 6 now has web UI coverage. No web UI increment is queued next — remaining candidates are backend/mobile/infra work, plus one small isolated frontend fix.
 
-1. **Web UI for RFID** — gateway/device registration, tag management, read history. More of an admin/setup surface than a daily-use one; the last remaining module without any web presence.
-2. **Fix `tracking/types.ts`'s stale `IdentifierType`** — small, isolated, found during the Inventory increment.
-3. **Phase 7 — Workflow & Integrations** — approval engine, notifications, first external connector. New backend domain, not yet started.
-4. **`device-gateway/` deployable service** — completes the Phase 6 RFID story with a real (simulated-hardware) separate deployment.
-5. **Mobile Phase 5.2** — offline storage/sync, blocked behind someone confirming 5.1 compiles.
-6. **Closing the Postgres/RLS gap** — see [Known gaps](#known-gaps); deliberately deferred, not urgent, but the honest bar for "production-ready" needs it eventually.
+1. **Fix `tracking/types.ts`'s stale `IdentifierType`** — small, isolated, found during the Inventory increment, still unfixed.
+2. **Phase 7 — Workflow & Integrations** — approval engine, notifications, first external connector. New backend domain, not yet started. Blueprint §646 explicitly names Maintenance-ticket and Inventory-reconciliation approval as intended hook points here.
+3. **`device-gateway/` deployable service** — completes the Phase 6 RFID story with a real (simulated-hardware) separate deployment; the web UI now has controls to register gateways/devices for it to connect to.
+4. **Mobile Phase 5.2** — offline storage/sync, blocked behind someone confirming 5.1 compiles.
+5. **Closing the Postgres/RLS gap** — see [Known gaps](#known-gaps); deliberately deferred, not urgent, but the honest bar for "production-ready" needs it eventually.
+6. **A full authenticated browser pass of the RFID UI** — the increment was verified statically (build/lint clean, every hook/type field cross-checked against backend schemas, permission strings confirmed against `seed.py`) plus an unauthenticated route-resolution smoke check, but not a real login→create-gateway→reveal-key→register-device/tag→view-read-events walkthrough, since Postgres isn't running in this environment. Same gap as every other increment's "Postgres never run" caveat, not unique to RFID.

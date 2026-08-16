@@ -6,7 +6,7 @@ Zonovia is Virasaka's enterprise asset-visibility platform — RFID, computer vi
 
 **See [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md) for the up-to-date, phase-by-phase build/test/verify status, known gaps (Postgres/RLS never run, mobile never compiled, RFID hardware simulated), and architectural decisions made along the way — kept current at every increment, read that file first, not this summary.**
 
-As of this writing: Platform Core, Asset Core + Flow, Tracking (QR/barcode), Inventory & Audit, Maintenance & Warranty, and RFID/Device Gateway (backend domain) are all built and tested (229/229 passing). A native Flutter mobile shell exists but has never been compiled (no Flutter SDK available in the environment that built it). A real multi-page web UI exists covering Asset Core (catalog, locations, asset CRUD) and Flow write actions (transition/assign/move) — Inventory, Maintenance, and RFID are backend-complete but have no web UI yet.
+As of this writing: Platform Core, Asset Core + Flow, Tracking (QR/barcode), Inventory & Audit, Maintenance & Warranty, and RFID/Device Gateway (backend domain) are all built and tested (229/229 passing). A native Flutter mobile shell exists but has never been compiled (no Flutter SDK available in the environment that built it). A real multi-page web UI now covers every one of those modules — Asset Core (catalog, locations, asset CRUD), Flow write actions (transition/assign/move), Inventory, Maintenance, and RFID/Device Gateway — see [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md) for what's independently verified vs. static-only per increment.
 
 Zonovia's backend stack is deliberately modeled on Virasaka's own shipped sibling product, SchoolAssist (FastAPI + SQLAlchemy 2.0 async + Alembic + PostgreSQL 16 + Redis + PyJWT + Argon2); the web frontend likewise mirrors SchoolAssist's web conventions (React + TS + Vite, hand-written fetch client, no component library); the mobile shell mirrors SchoolAssist's Flutter app.
 
@@ -35,7 +35,8 @@ backend/            FastAPI modular monolith
   migrations/        Alembic, 0001-0015
   tests/             pytest — SQLite unit tier (default) + Postgres RLS integration tier
                       (`-m postgres`, see docs/IMPLEMENTATION_STATUS.md — not yet run for real)
-web/                 React + TS + Vite — login, scan, asset core CRUD + Flow actions
+web/                 React + TS + Vite — login, scan, asset core CRUD + Flow actions,
+                      Inventory, Maintenance, RFID/Device Gateway
 mobile/              Flutter — shell, auth, online scanning (never compiled, see status doc)
 device-gateway/, sdks/    still placeholders
 infrastructure/docker/    postgres-init scripts (dev + prod)
