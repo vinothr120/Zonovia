@@ -14,6 +14,10 @@ import { AssetDetailPage } from "./assets/AssetDetailPage";
 import { CyclesListPage } from "./inventory/CyclesListPage";
 import { CycleFormPage } from "./inventory/CycleFormPage";
 import { CycleDetailPage } from "./inventory/CycleDetailPage";
+import { TicketsListPage } from "./maintenance/TicketsListPage";
+import { TicketFormPage } from "./maintenance/TicketFormPage";
+import { TicketDetailPage } from "./maintenance/TicketDetailPage";
+import { SchedulesDueReportPage } from "./maintenance/SchedulesDueReportPage";
 
 function Protected({ children }: { children: ReactNode }) {
   return (
@@ -129,6 +133,39 @@ function App() {
         element={
           <Protected>
             <CycleDetailPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/maintenance/tickets"
+        element={
+          <Protected>
+            <TicketsListPage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/maintenance/tickets/new"
+        element={
+          <Protected>
+            <TicketFormPage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/maintenance/tickets/:ticketId"
+        element={
+          <Protected>
+            <TicketDetailPage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/maintenance/schedules/due"
+        element={
+          <Protected>
+            <SchedulesDueReportPage />
           </Protected>
         }
       />

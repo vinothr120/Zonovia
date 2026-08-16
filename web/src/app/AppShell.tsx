@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { Boxes, ChevronDown, ClipboardList, LogOut, MapPin, ScanLine, Tag } from "lucide-react";
+import { Boxes, ChevronDown, ClipboardList, LogOut, MapPin, ScanLine, Tag, Wrench } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 
 const navLinkBase = "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap";
@@ -23,6 +23,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [catalogOpen, setCatalogOpen] = useState(location.pathname.startsWith("/catalog"));
+  const [maintenanceOpen, setMaintenanceOpen] = useState(location.pathname.startsWith("/maintenance"));
 
   async function handleLogout() {
     await logout();
@@ -92,6 +93,32 @@ export function AppShell({ children }: { children: ReactNode }) {
               <ClipboardList className="w-4 h-4 shrink-0" />
               Inventory
             </NavLink>
+
+            <div className="sm:contents">
+              <button
+                type="button"
+                onClick={() => setMaintenanceOpen((open) => !open)}
+                aria-expanded={maintenanceOpen}
+                className={`${navLinkBase} ${navLinkInactive} sm:w-full sm:justify-between`}
+              >
+                <span className="flex items-center gap-2">
+                  <Wrench className="w-4 h-4 shrink-0" />
+                  Maintenance
+                </span>
+                <ChevronDown className={`w-4 h-4 transition-transform shrink-0 ${maintenanceOpen ? "rotate-180" : ""}`} />
+              </button>
+              {maintenanceOpen && (
+                <div className="flex sm:flex-col gap-1 sm:pl-6">
+                  <NavLink to="/maintenance/tickets" className={navLinkClass}>
+                    Tickets
+                  </NavLink>
+                  <NavLink to="/maintenance/schedules/due" className={navLinkClass}>
+                    Due schedules
+                  </NavLink>
+                </div>
+              )}
+            </div>
+
             <NavLink to="/scan" className={navLinkClass}>
               <ScanLine className="w-4 h-4 shrink-0" />
               Scan

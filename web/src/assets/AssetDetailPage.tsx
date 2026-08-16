@@ -10,6 +10,9 @@ import { useLifecycleStates } from "../flow/hooks";
 import { Breadcrumb } from "../core/ui/Breadcrumb";
 import { locationBreadcrumb, useAssetLocations } from "../locations/hooks";
 import { custodianLabel, useUsersLookup } from "../users/hooks";
+import { AssetScheduleSection } from "../maintenance/AssetScheduleSection";
+import { AssetTicketsSection } from "../maintenance/AssetTicketsSection";
+import { AssetWarrantySection } from "../maintenance/AssetWarrantySection";
 import { CustodyActions } from "./CustodyActions";
 import { DocumentsSection } from "./DocumentsSection";
 import { HistoryFeed } from "./HistoryFeed";
@@ -31,6 +34,10 @@ export function AssetDetailPage() {
   const canTransition = me?.permissions.includes("assets.transition_lifecycle") ?? false;
   const canAssign = me?.permissions.includes("assets.assign") ?? false;
   const canMove = me?.permissions.includes("assets.move") ?? false;
+  const canViewMaintenance = me?.permissions.includes("maintenance.view") ?? false;
+  const canManageWarranty = me?.permissions.includes("maintenance.manage_warranty") ?? false;
+  const canManageSchedules = me?.permissions.includes("maintenance.manage_schedules") ?? false;
+  const canManageTickets = me?.permissions.includes("maintenance.manage_tickets") ?? false;
 
   const assetQuery = useQuery({
     queryKey: ["assets", assetId],
@@ -149,6 +156,9 @@ export function AssetDetailPage() {
 
       <IdentifiersSection assetId={asset.id} canEdit={canEdit} />
       <DocumentsSection assetId={asset.id} canManage={canManageDocuments} />
+      <AssetWarrantySection assetId={asset.id} canView={canViewMaintenance} canManage={canManageWarranty} />
+      <AssetScheduleSection assetId={asset.id} canView={canViewMaintenance} canManage={canManageSchedules} />
+      <AssetTicketsSection assetId={asset.id} canView={canViewMaintenance} canManageTickets={canManageTickets} />
       <HistoryFeed assetId={asset.id} canView={canViewHistory} />
     </div>
   );
