@@ -11,6 +11,9 @@ import { LocationsPage } from "./locations/LocationsPage";
 import { AssetListPage } from "./assets/AssetListPage";
 import { AssetFormPage } from "./assets/AssetFormPage";
 import { AssetDetailPage } from "./assets/AssetDetailPage";
+import { CyclesListPage } from "./inventory/CyclesListPage";
+import { CycleFormPage } from "./inventory/CycleFormPage";
+import { CycleDetailPage } from "./inventory/CycleDetailPage";
 
 function Protected({ children }: { children: ReactNode }) {
   return (
@@ -101,6 +104,31 @@ function App() {
         element={
           <Protected>
             <LocationsPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/inventory"
+        element={
+          <Protected>
+            <CyclesListPage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/inventory/new"
+        element={
+          <Protected>
+            <CycleFormPage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/inventory/:cycleId"
+        element={
+          <Protected>
+            <CycleDetailPage />
           </Protected>
         }
       />

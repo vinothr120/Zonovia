@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { Boxes, ChevronDown, LogOut, MapPin, ScanLine, Tag } from "lucide-react";
+import { Boxes, ChevronDown, ClipboardList, LogOut, MapPin, ScanLine, Tag } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 
 const navLinkBase = "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap";
@@ -87,6 +87,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             <NavLink to="/locations" className={navLinkClass}>
               <MapPin className="w-4 h-4 shrink-0" />
               Locations
+            </NavLink>
+            <NavLink to="/inventory" className={navLinkClass}>
+              <ClipboardList className="w-4 h-4 shrink-0" />
+              Inventory
             </NavLink>
             <NavLink to="/scan" className={navLinkClass}>
               <ScanLine className="w-4 h-4 shrink-0" />
