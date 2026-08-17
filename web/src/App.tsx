@@ -22,6 +22,14 @@ import { GatewaysListPage } from "./rfid/GatewaysListPage";
 import { GatewayFormPage } from "./rfid/GatewayFormPage";
 import { RfidTagsListPage } from "./rfid/RfidTagsListPage";
 import { ReadEventsPage } from "./rfid/ReadEventsPage";
+import { DefinitionsListPage } from "./workflow/DefinitionsListPage";
+import { DefinitionFormPage } from "./workflow/DefinitionFormPage";
+import { DefinitionDetailPage } from "./workflow/DefinitionDetailPage";
+import { MyApprovalsPage } from "./workflow/MyApprovalsPage";
+import { InstancesListPage } from "./workflow/InstancesListPage";
+import { EvaluateInstancePage } from "./workflow/EvaluateInstancePage";
+import { InstanceDetailPage } from "./workflow/InstanceDetailPage";
+import { NotificationsPage } from "./workflow/NotificationsPage";
 
 function Protected({ children }: { children: ReactNode }) {
   return (
@@ -203,6 +211,74 @@ function App() {
         element={
           <Protected>
             <ReadEventsPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/workflow/definitions"
+        element={
+          <Protected>
+            <DefinitionsListPage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/workflow/definitions/new"
+        element={
+          <Protected>
+            <DefinitionFormPage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/workflow/definitions/:definitionId"
+        element={
+          <Protected>
+            <DefinitionDetailPage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/workflow/my-approvals"
+        element={
+          <Protected>
+            <MyApprovalsPage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/workflow/instances"
+        element={
+          <Protected>
+            <InstancesListPage />
+          </Protected>
+        }
+      />
+      {/* Must be registered before /workflow/instances/:instanceId — otherwise "evaluate"
+          would match the :instanceId param and this route would never be reached. */}
+      <Route
+        path="/workflow/instances/evaluate"
+        element={
+          <Protected>
+            <EvaluateInstancePage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/workflow/instances/:instanceId"
+        element={
+          <Protected>
+            <InstanceDetailPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/notifications"
+        element={
+          <Protected>
+            <NotificationsPage />
           </Protected>
         }
       />

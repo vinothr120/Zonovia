@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { Boxes, ChevronDown, ClipboardList, LogOut, MapPin, Radio, ScanLine, Tag, Wrench } from "lucide-react";
+import { Boxes, ChevronDown, ClipboardCheck, ClipboardList, LogOut, MapPin, Radio, ScanLine, Tag, Wrench } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
+import { NotificationsBell } from "../workflow/NotificationsBell";
 
 const navLinkBase = "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap";
 const navLinkInactive = "text-slate-600 hover:bg-slate-100 hover:text-slate-900";
@@ -25,7 +26,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [catalogOpen, setCatalogOpen] = useState(location.pathname.startsWith("/catalog"));
   const [maintenanceOpen, setMaintenanceOpen] = useState(location.pathname.startsWith("/maintenance"));
   const [rfidOpen, setRfidOpen] = useState(location.pathname.startsWith("/rfid"));
+  const [approvalsOpen, setApprovalsOpen] = useState(location.pathname.startsWith("/workflow"));
   const canManageGateways = me?.permissions.includes("tracking.manage_gateways") ?? false;
+  const canViewWorkflow = me?.permissions.includes("workflow.view") ?? false;
+  const canDecideWorkflow = me?.permissions.includes("workflow.decide") ?? false;
 
   async function handleLogout() {
     await logout();
@@ -37,6 +41,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between gap-2 px-4 sticky top-0 z-30">
         <span className="font-semibold text-slate-900 truncate">Zonovia</span>
         <div className="flex items-center gap-3 shrink-0">
+          <NotificationsBell />
           <span className="hidden sm:inline text-sm text-slate-500 truncate max-w-[16rem]">{me?.email}</span>
           <button
             type="button"
@@ -147,6 +152,40 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <NavLink to="/rfid/read-events" className={navLinkClass}>
                     Read events
                   </NavLink>
+                </div>
+              )}
+            </div>
+
+            <div className="sm:contents">
+              <button
+                type="button"
+                onClick={() => setApprovalsOpen((open) => !open)}
+                aria-expanded={approvalsOpen}
+                className={`${navLinkBase} ${navLinkInactive} sm:w-full sm:justify-between`}
+              >
+                <span className="flex items-center gap-2">
+                  <ClipboardCheck className="w-4 h-4 shrink-0" />
+                  Approvals
+                </span>
+                <ChevronDown className={`w-4 h-4 transition-transform shrink-0 ${approvalsOpen ? "rotate-180" : ""}`} />
+              </button>
+              {approvalsOpen && (
+                <div className="flex sm:flex-col gap-1 sm:pl-6">
+                  {canDecideWorkflow && (
+                    <NavLink to="/workflow/my-approvals" className={navLinkClass}>
+                      My approvals
+                    </NavLink>
+                  )}
+                  {canViewWorkflow && (
+                    <NavLink to="/workflow/instances" className={navLinkClass}>
+                      Instances
+                    </NavLink>
+                  )}
+                  {canViewWorkflow && (
+                    <NavLink to="/workflow/definitions" className={navLinkClass}>
+                      Definitions
+                    </NavLink>
+                  )}
                 </div>
               )}
             </div>
