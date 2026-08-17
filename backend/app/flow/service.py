@@ -21,6 +21,14 @@ from app.flow.repository import (
     LifecycleStateDefinitionRepository,
     LifecycleTransitionDefinitionRepository,
 )
+from app.workflow.service import WorkflowService
+
+# WorkflowService.evaluate_and_maybe_open's entity_type for asset lifecycle transitions — see
+# transition_asset's call site and the module implementation plan's entity_id design decision
+# (the transition row's own id, not the asset's id, so repeated matching transitions on the same
+# asset each get an independent ApprovalInstance instead of being silently suppressed by the
+# duplicate-open guard).
+_WORKFLOW_ENTITY_TYPE = "asset_lifecycle_transition"
 
 # The default lifecycle graph lazily seeded per tenant on first use (list_states or
 # transition_asset — never from AssetService.create_asset, per the module dependency
@@ -72,7 +80,11 @@ _DEFAULT_TRANSITIONS: list[tuple[str, str]] = [
 
 class FlowService:
     """The configurable lifecycle engine, plus assignment/movement/history. Depends on
-    asset-core (AssetRepository, AssetLocationRepository), never the reverse."""
+    asset-core (AssetRepository, AssetLocationRepository), never the reverse. The one deliberate
+    exception is Workflow: transition_asset calls WorkflowService.evaluate_and_maybe_open (a
+    genuine write, in the same transaction) to optionally open an ApprovalInstance for
+    visibility — non-blocking, its return value is discarded, and it never gates or reverses a
+    lifecycle transition."""
 
     def __init__(self, session: AsyncSession, tenant_id: uuid.UUID):
         self.session = session
@@ -271,6 +283,25 @@ class FlowService:
             entity_id=asset.id,
             old_value={"from_state_id": str(current_state_id) if current_state_id else None},
             new_value={"to_state_id": str(to_state.id), "to_state_key": to_state.key},
+        )
+        # Non-blocking, record-only integration: never gates or reverses the transition, return
+        # value discarded. entity_id is history.id — this transition row's own id, NOT
+        # asset.id — so repeated matching transitions on the same asset each open an
+        # independent ApprovalInstance instead of being suppressed by evaluate_and_maybe_open's
+        # duplicate-open guard (get_open_for_entity keys on the exact (entity_type, entity_id)
+        # pair). `purchase_price` must be converted from Decimal to float before it enters
+        # `context` (a JSON column) — a raw Decimal is not JSON-serializable, same hazard as
+        # MaintenanceTicket.cost. See the module's implementation plan's design decision.
+        from_state = await self.states.get_by_id(current_state_id) if current_state_id is not None else None
+        await WorkflowService(self.session, self.tenant_id).evaluate_and_maybe_open(
+            entity_type=_WORKFLOW_ENTITY_TYPE,
+            entity_id=history.id,
+            context={
+                "purchase_price": float(asset.purchase_price) if asset.purchase_price is not None else None,
+                "to_state_key": to_state.key,
+                "from_state_key": from_state.key if from_state is not None else None,
+            },
+            actor_user_id=actor_user_id,
         )
         return history
 
