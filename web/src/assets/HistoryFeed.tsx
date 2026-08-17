@@ -8,12 +8,15 @@ import type { AssetHistoryEntry } from "../flow/types";
 import { useAssetLocations } from "../locations/hooks";
 import { custodianLabel, useUsersLookup } from "../users/hooks";
 import type { UserSummary } from "../users/hooks";
+import { TransitionApprovalIndicator } from "../workflow/TransitionApprovalIndicator";
 
 /** Purely a read-only chronological feed — no action buttons. Flow write actions
  * (transition/assign/move) are explicitly out of scope this increment; this component only
  * proves the read side of the integration, merging entries already produced elsewhere
- * (curl/Swagger for now) with names resolved via the shared reference-data lookup maps. */
-export function HistoryFeed({ assetId, canView }: { assetId: string; canView: boolean }) {
+ * (curl/Swagger for now) with names resolved via the shared reference-data lookup maps.
+ * `canViewWorkflow` is separate from `canView` (asset_lifecycle.view vs workflow.view) — a user
+ * can see lifecycle history without being able to see Workflow's approval status, or vice versa. */
+export function HistoryFeed({ assetId, canView, canViewWorkflow }: { assetId: string; canView: boolean; canViewWorkflow: boolean }) {
   const historyQuery = useQuery({
     queryKey: ["asset-history", assetId],
     queryFn: () => api.get<AssetHistoryEntry[]>(`/assets/${assetId}/history`),
@@ -53,6 +56,7 @@ export function HistoryFeed({ assetId, canView }: { assetId: string; canView: bo
               statesMap={statesQuery.map}
               locationsMap={locationsQuery.map}
               usersMap={usersLookup.map}
+              canViewWorkflow={canViewWorkflow}
             />
           ))}
         </ul>
@@ -66,11 +70,13 @@ function HistoryEntryRow({
   statesMap,
   locationsMap,
   usersMap,
+  canViewWorkflow,
 }: {
   entry: AssetHistoryEntry;
   statesMap: Map<string, { label: string }>;
   locationsMap: Map<string, { name: string }>;
   usersMap: Map<string, UserSummary>;
+  canViewWorkflow: boolean;
 }) {
   const when = new Date(entry.occurred_at).toLocaleString();
 
@@ -81,6 +87,7 @@ function HistoryEntryRow({
       <HistoryRow icon={<ArrowRightLeft className="w-4 h-4 text-indigo-500" />} when={when}>
         <span className="text-slate-900">
           Lifecycle transition: <span className="font-medium">{from}</span> → <span className="font-medium">{to}</span>
+          <TransitionApprovalIndicator transitionId={entry.data.id} canView={canViewWorkflow} />
         </span>
         <HistoryMeta by={entry.data.transitioned_by ? custodianLabel(entry.data.transitioned_by, usersMap) : null} note={entry.data.note} />
       </HistoryRow>

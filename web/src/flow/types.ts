@@ -67,6 +67,7 @@ export interface AssetMovementResult {
 }
 
 export interface LifecycleTransitionEntryData {
+  id: string;
   from_state_id: string | null;
   to_state_id: string;
   transitioned_by: string | null;

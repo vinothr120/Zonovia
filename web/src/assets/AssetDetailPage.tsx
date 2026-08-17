@@ -41,6 +41,7 @@ export function AssetDetailPage() {
   const canManageTickets = me?.permissions.includes("maintenance.manage_tickets") ?? false;
   const canViewRfid = me?.permissions.includes("track_rfid.view") ?? false;
   const canManageRfidTags = me?.permissions.includes("track_rfid.manage_tags") ?? false;
+  const canViewWorkflow = me?.permissions.includes("workflow.view") ?? false;
 
   const assetQuery = useQuery({
     queryKey: ["assets", assetId],
@@ -163,7 +164,7 @@ export function AssetDetailPage() {
       <AssetWarrantySection assetId={asset.id} canView={canViewMaintenance} canManage={canManageWarranty} />
       <AssetScheduleSection assetId={asset.id} canView={canViewMaintenance} canManage={canManageSchedules} />
       <AssetTicketsSection assetId={asset.id} canView={canViewMaintenance} canManageTickets={canManageTickets} />
-      <HistoryFeed assetId={asset.id} canView={canViewHistory} />
+      <HistoryFeed assetId={asset.id} canView={canViewHistory} canViewWorkflow={canViewWorkflow} />
     </div>
   );
 }

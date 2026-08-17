@@ -409,6 +409,7 @@ class FlowService:
                         "entry_type": "lifecycle_transition",
                         "occurred_at": t.transitioned_at,
                         "data": {
+                            "id": str(t.id),
                             "from_state_id": str(t.from_state_id) if t.from_state_id else None,
                             "to_state_id": str(t.to_state_id),
                             "transitioned_by": str(t.transitioned_by) if t.transitioned_by else None,
