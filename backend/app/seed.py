@@ -89,6 +89,13 @@ DEFAULT_ROLE_BUNDLES: dict[str, list[str] | None] = {
         "tracking.manage_devices",
         "track_rfid.manage_tags",
         "track_rfid.view",
+        # Phase 7 — Workflow & Approvals: Tenant Admin gets all three, including
+        # workflow.manage_definitions — editing the approval-routing graph is a shared-config
+        # edit with tenant-wide consequences, reserved the same way asset_lifecycle.configure
+        # (line 64 above) and inventory.reconcile (line 75 above) are.
+        "workflow.view",
+        "workflow.decide",
+        "workflow.manage_definitions",
     ],
     "Member": [
         "users.view",
@@ -124,6 +131,12 @@ DEFAULT_ROLE_BUNDLES: dict[str, list[str] | None] = {
         # infrastructure permissions, see the comment on Tenant Admin's bundle above.
         "track_rfid.manage_tags",
         "track_rfid.view",
+        # Phase 7 — Workflow & Approvals: Member gets view+decide, NOT manage_definitions —
+        # same Tenant-Admin-only reservation as asset_lifecycle.configure/inventory.reconcile,
+        # not Maintenance's flat four-permission Member parity (see the comment on Tenant
+        # Admin's bundle above).
+        "workflow.view",
+        "workflow.decide",
     ],
     "Viewer": [
         "users.view",
@@ -140,6 +153,9 @@ DEFAULT_ROLE_BUNDLES: dict[str, list[str] | None] = {
         # Phase 6 — RFID / Device Gateway: Viewer gets track_rfid.view only, same split as
         # every other module's Viewer bundle.
         "track_rfid.view",
+        # Phase 7 — Workflow & Approvals: Viewer gets workflow.view only, same split as every
+        # other module's Viewer bundle.
+        "workflow.view",
     ],
 }
 

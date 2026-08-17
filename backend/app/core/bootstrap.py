@@ -15,6 +15,7 @@ def register_all_modules() -> None:
     from app.track_rfid.permissions import MODULE as track_rfid_module
     from app.tracking.permissions import MODULE as tracking_module
     from app.users.permissions import MODULE as users_module
+    from app.workflow.permissions import MODULE as workflow_module
 
     for module in (
         platform_module,
@@ -27,6 +28,7 @@ def register_all_modules() -> None:
         inventory_module,
         maintenance_module,
         track_rfid_module,
+        workflow_module,
     ):
         register_module(module)
 

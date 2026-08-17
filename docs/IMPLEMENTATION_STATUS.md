@@ -1,6 +1,6 @@
 # Zonovia — Implementation Status
 
-**Last updated:** 2026-08-16, after the RFID web UI increment (`57dc27c`).
+**Last updated:** 2026-08-17, after the Workflow & Approval engine increment (backend Phase 7).
 
 This document tracks what's actually built and verified, as opposed to what the [architecture blueprint](architecture/Zonovia-Architecture-Blueprint.md) describes as the target design. The blueprint is the destination; this file is "where are we on the map right now," kept current at each increment so a later session — human or AI — doesn't have to reconstruct it from commit messages. When this file and the blueprint disagree on a detail, a note here explains why (usually: a blueprint ambiguity resolved during implementation, cited by section).
 
@@ -23,14 +23,16 @@ This document tracks what's actually built and verified, as opposed to what the 
 | 5.2 | Mobile offline storage + sync engine | ❌ not started | — | — | Blocked behind confirming 5.1 actually runs |
 | 6 | RFID / Device Gateway — backend domain | ✅ | ✅ | ✅ (SQLite) | `default_enabled=False` — "Zonovia RFID" tier (separate from Manage) |
 | 6.2 | RFID / Device Gateway — separate deployable service | ❌ not started | — | — | Needs a simulated hardware adapter (no real reader available) |
-| 7 | Workflow & Integrations | ❌ not started | — | — | |
+| 7 | Workflow & Approval engine (definitions, approval instances/steps, in-app notifications) | ✅ | ✅ | ✅ (SQLite + real backend run) | `always_on=True` — Platform Core, not a paid module; standalone engine, not wired into any other module's write path yet |
+| 7.2 | Workflow — first Connect connector, external notification delivery | ❌ not started | — | — | Blocked on unresolved product decisions (pilot industries OQ-3, email/SMS provider) — see [Next candidates](#next-candidates-not-yet-decided-between) |
 | — | Web UI: Asset Core (catalog, locations, asset CRUD) | ✅ | — | ✅ (real browser) | |
 | — | Web UI: Flow write actions (transition, assign/unassign, move) | ✅ | — | ✅ (real browser) | |
 | — | Web UI: Inventory | ✅ | — | ✅ (real browser) | First UI for a paid-tier ("Zonovia Manage") module; first with irreversible actions (confirm dialogs) |
 | — | Web UI: Maintenance | ✅ | — | ✅ (real browser) | Warranty/schedules embedded on the asset page; tickets get their own pages + a new reusable AssetPicker |
 | — | Web UI: RFID | ✅ | — | ⚠️ static + login-redirect only | Backend/Postgres not running in this environment, no full authenticated pass — see notes below |
+| — | Web UI: Workflow | ❌ not started | — | — | New backend domain, no web UI yet |
 
-Backend combined test suite: **229/229 passing**, ruff clean, as of Phase 6.
+Backend combined test suite: **267/267 passing**, ruff clean, as of Phase 7.
 
 ## Known gaps
 
@@ -41,7 +43,7 @@ These are open, acknowledged, and — per explicit user decisions — not blocki
 Every phase's automated tests and manual verification run against SQLite (via `backend/scripts/run_dev_sqlite.py`, a dev-convenience path that uses `Base.metadata.create_all` rather than the real Alembic migrations, since the hand-written migrations use Postgres-specific SQL — RLS policies, `gen_random_uuid()`, native `JSONB` — that doesn't run on SQLite at all). This means:
 
 - The actual RLS fail-closed tenant-isolation guarantee (§9/§17 of the blueprint) has never been exercised against real Postgres — only its *application-layer* equivalent (`TenantScopedRepository`'s explicit `WHERE tenant_id = ...` filtering) has real coverage, via `tests/test_tenant_isolation.py`. `tests/test_tenant_isolation_postgres.py` and other `@pytest.mark.postgres`-tagged tests exist and are written correctly against the real Postgres behavior, but are excluded from every CI/local run so far (`pytest -m "not postgres"`).
-- The 15 Alembic migrations (`0001`–`0015`) have only been checked for structural validity (`alembic history` resolves to a single linear chain, migration files parse) — never actually applied to a live Postgres instance.
+- The 17 Alembic migrations (`0001`–`0017`) have only been checked for structural validity (`alembic history` resolves to a single linear chain, migration files parse) — never actually applied to a live Postgres instance.
 - `zonovia_app`'s automatically-inherited grants (via `ALTER DEFAULT PRIVILEGES`, migration `0003`) have never been confirmed live.
 
 **Status:** on 2026-08-15 the user was offered three options (free-tier cloud Postgres with no local install, install Docker Desktop, or skip it) and explicitly chose to skip it and keep building. Docker Desktop is confirmed not installed on the development machine. **This is a deliberate, informed deferral, not an oversight** — treat it as closed unless the user raises it again themselves.
@@ -73,6 +75,8 @@ Places where the blueprint was ambiguous, self-contradictory, or silent, and a c
 - **RFID read deduplication key** (Phase 6): deduplicated per `(asset_id, device_id)`, not `asset_id` alone — a different reader picking up the same asset within the dedup window still produces an immediate new event, so a genuine zone transition is never silently swallowed by the window.
 - **RFID gateway/device permission cliff, confirmed against `seed.py`** (RFID UI increment): `tracking.manage_gateways`/`manage_devices` are Tenant-Admin-only — Member gets zero access, unlike every other module built so far where Member has had substantial or full access. `track_rfid.manage_tags`/`view` (tag management) *are* on Member, so the UI splits gating accordingly: gateway/device controls render nothing for non-Tenant-Admin (no disabled shells, per the established convention), tag controls gate on the separate, broader `track_rfid.manage_tags` permission.
 - **No date-range filter exists on RFID read events** (RFID UI increment): `RfidReadEventRepository.list_filtered` only supports `resolved`/`device_id`/`tag_epc` — `read_at` is used solely for ordering, never filtering. The web UI's `ReadEventsPage` was designed around device + date-range filters before this was checked directly against `track_rfid/repository.py`; the date-range control was dropped and a `resolved` filter substituted, since it's real and serves the same diagnostic purpose.
+- **Workflow is Platform Core infrastructure, not a paid module** (Phase 7): the blueprint's §6 dependency table and §7's `core` module row list `workflow_*` as bundled with Identity & Tenancy / "included in every tier," even though §29's packaging prose loosely mentions "advanced lifecycle/workflow" under paid "Zonovia Manage." Resolved the same way Warranty's placement was resolved, but in the opposite direction — here the structural dependency table wins over packaging prose. Registered `always_on=True`; its router has no `require_module` dependency, matching `tenants/router.py`/`users/router.py`.
+- **Workflow is a standalone engine, not wired into any other module's write path** (Phase 7): `FlowService.transition_asset`, `MaintenanceService.create_ticket`, and `InventoryService`'s reconciliation methods have no approval hook today, and this increment doesn't add one. `ApprovalInstance`/`ApprovalInstanceStep` reference `(entity_type: str, entity_id: uuid)` with no FK to `assets` or anything else, matching the blueprint's own dependency row (Workflow depends only on Identity & Tenancy). The primary integration path for a future module wiring is the in-process `WorkflowService.evaluate_and_maybe_open(...)` call — deliberately out of scope this increment, the same "record, don't execute" staging Inventory/Maintenance already use against Flow.
 
 ## Mobile (Phase 5.1)
 
@@ -93,15 +97,17 @@ The only part of this project with a fully-available, fully-verifiable toolchain
 
 All modules built through Phase 6 now have web UI coverage.
 
-**Known side finding, not yet fixed:** `web/src/tracking/types.ts`'s `IdentifierType` (`"QR" | "BARCODE"` only) is stale relative to `web/src/assets/types.ts`'s authoritative set (`+ "SERIAL" | "RFID_EPC"`, confirmed to mirror the backend's actual allow-list). `ScanPage.tsx`'s manual-entry identifier-type select is therefore narrower than what the backend actually accepts. Found during the Inventory increment (which correctly imports from `assets/types.ts` instead), not fixed there since it's out of scope for that increment — worth a small follow-up fix.
+**Fixed since found:** `web/src/tracking/types.ts`'s `IdentifierType` used to redeclare its own stale `"QR" | "BARCODE"` union instead of importing `web/src/assets/types.ts`'s authoritative set (`+ "SERIAL" | "RFID_EPC"`). Found during the Inventory increment, left unfixed there as out of scope; fixed after the RFID UI increment — `tracking/types.ts` now re-exports from `assets/types.ts`, and `ScanPage.tsx`'s manual-entry select offers all four types.
 
 ## Next candidates (not yet decided between)
 
-Every backend module built through Phase 6 now has web UI coverage. No web UI increment is queued next — remaining candidates are backend/mobile/infra work, plus one small isolated frontend fix.
+Every backend module built through Phase 7 now has a working API; web UI coverage stops at Phase 6 (Workflow has none yet). Remaining candidates are backend/mobile/infra/frontend work.
 
-1. **Fix `tracking/types.ts`'s stale `IdentifierType`** — small, isolated, found during the Inventory increment, still unfixed.
-2. **Phase 7 — Workflow & Integrations** — approval engine, notifications, first external connector. New backend domain, not yet started. Blueprint §646 explicitly names Maintenance-ticket and Inventory-reconciliation approval as intended hook points here.
-3. **`device-gateway/` deployable service** — completes the Phase 6 RFID story with a real (simulated-hardware) separate deployment; the web UI now has controls to register gateways/devices for it to connect to.
-4. **Mobile Phase 5.2** — offline storage/sync, blocked behind someone confirming 5.1 compiles.
-5. **Closing the Postgres/RLS gap** — see [Known gaps](#known-gaps); deliberately deferred, not urgent, but the honest bar for "production-ready" needs it eventually.
-6. **A full authenticated browser pass of the RFID UI** — the increment was verified statically (build/lint clean, every hook/type field cross-checked against backend schemas, permission strings confirmed against `seed.py`) plus an unauthenticated route-resolution smoke check, but not a real login→create-gateway→reveal-key→register-device/tag→view-read-events walkthrough, since Postgres isn't running in this environment. Same gap as every other increment's "Postgres never run" caveat, not unique to RFID.
+1. **Wire Workflow into a real module's write path** — the engine is standalone today (see Architectural decisions above); the blueprint's own approval examples point at Maintenance-ticket creation above a cost threshold or a Flow transition on high-value assets as the first real caller of `WorkflowService.evaluate_and_maybe_open(...)`.
+2. **External notification delivery for Workflow** — today's `Notification` rows are in-app only; email/SMS delivery is a deferred provider decision, same category as the still-open AI-provider question.
+3. **The first Connect connector** — explicitly blocked on OQ-3 (which pilot industries), genuinely unresolved in the blueprint itself.
+4. **Web UI: Workflow** — no frontend yet for definitions/instances/approvals/notifications.
+5. **`device-gateway/` deployable service** — completes the Phase 6 RFID story with a real (simulated-hardware) separate deployment; the web UI now has controls to register gateways/devices for it to connect to.
+6. **Mobile Phase 5.2** — offline storage/sync, blocked behind someone confirming 5.1 compiles.
+7. **Closing the Postgres/RLS gap** — see [Known gaps](#known-gaps); deliberately deferred, not urgent, but the honest bar for "production-ready" needs it eventually.
+8. **A full authenticated browser pass of the RFID UI** — the increment was verified statically (build/lint clean, every hook/type field cross-checked against backend schemas, permission strings confirmed against `seed.py`) plus an unauthenticated route-resolution smoke check, but not a real login→create-gateway→reveal-key→register-device/tag→view-read-events walkthrough, since Postgres isn't running in this environment. Same gap as every other increment's "Postgres never run" caveat, not unique to RFID.

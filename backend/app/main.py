@@ -27,6 +27,7 @@ from app.tracking.router import gateways_router as tracking_gateways_router
 from app.tracking.router import router as tracking_router
 from app.users.router import permissions_router, roles_router
 from app.users.router import router as users_router
+from app.workflow.router import router as workflow_router
 
 register_all_modules()
 register_all_tracking_providers()
@@ -88,3 +89,4 @@ app.include_router(maintenance_warranty_router, prefix=api_prefix)
 app.include_router(rfid_tags_router, prefix=api_prefix)
 app.include_router(rfid_read_events_router, prefix=api_prefix)
 app.include_router(rfid_ingest_router, prefix=api_prefix)
+app.include_router(workflow_router, prefix=api_prefix)

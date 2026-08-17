@@ -28,3 +28,10 @@ from app.tenants.models import Tenant, TenantConnectionRoute, TenantSetting  # n
 from app.track_rfid.models import RfidReadEvent, RfidTag  # noqa: F401
 from app.tracking.models import Device, DeviceGateway, TrackingEvent  # noqa: F401
 from app.users.models import Permission, Role, RolePermission, User, UserRole  # noqa: F401
+from app.workflow.models import (  # noqa: F401
+    ApprovalInstance,
+    ApprovalInstanceStep,
+    ApprovalStepDefinition,
+    Notification,
+    WorkflowDefinition,
+)
