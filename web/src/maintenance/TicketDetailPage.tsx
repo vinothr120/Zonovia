@@ -6,6 +6,7 @@ import { useAuth } from "../auth/AuthContext";
 import { apiErrorMessage, ErrorState, LoadingState } from "../core/ui/StateViews";
 import { useToast } from "../core/ui/ToastContext";
 import { custodianLabel, useUsersLookup } from "../users/hooks";
+import { TicketApprovalSection } from "../workflow/TicketApprovalSection";
 import { TicketStatusBadge } from "./AssetTicketsSection";
 import { assetLabel, useAssetsLookup, useTicket, useUpdateTicket } from "./hooks";
 import { TicketStatusActions } from "./TicketStatusActions";
@@ -20,6 +21,7 @@ export function TicketDetailPage() {
   const { ticketId } = useParams<{ ticketId: string }>();
   const { me } = useAuth();
   const canManageTickets = me?.permissions.includes("maintenance.manage_tickets") ?? false;
+  const canViewWorkflow = me?.permissions.includes("workflow.view") ?? false;
   const { showToast } = useToast();
   const usersLookup = useUsersLookup();
 
@@ -194,6 +196,8 @@ export function TicketDetailPage() {
           </dl>
         )}
       </div>
+
+      <TicketApprovalSection ticketId={ticketId} canView={canViewWorkflow} />
 
       <TicketStatusActions ticket={ticket} canManageTickets={canManageTickets} />
     </div>

@@ -11,6 +11,12 @@ from app.core.exceptions import ConflictError, NotFoundError, ValidationAppError
 from app.flow.repository import LifecycleStateDefinitionRepository
 from app.maintenance.models import _TICKET_PRIORITIES, MaintenanceTicket, ServiceSchedule, Warranty
 from app.maintenance.repository import MaintenanceTicketRepository, ServiceScheduleRepository, WarrantyRepository
+from app.workflow.service import WorkflowService
+
+# WorkflowService.evaluate_and_maybe_open's entity_type for tickets — a module-level constant
+# so the string appears once, not re-typed at the one call site plus every write_audit_log(
+# entity_type=...) call in this file.
+_WORKFLOW_ENTITY_TYPE = "maintenance_ticket"
 
 
 def _warranty_status(warranty: Warranty, *, today: date | None = None) -> dict:
@@ -36,7 +42,11 @@ class MaintenanceService:
     asset-core (AssetRepository, VendorRepository) and a READ-ONLY
     app.flow.repository.LifecycleStateDefinitionRepository (key -> id resolution only) —
     never app.flow.service.FlowService, never transition_asset. See the module's
-    implementation plan's "Flow dependency: read-only, not write-through" design decision."""
+    implementation plan's "Flow dependency: read-only, not write-through" design decision.
+    The one deliberate exception to that read-only stance is Workflow: create_ticket calls
+    WorkflowService.evaluate_and_maybe_open (a genuine write, in the same transaction) to
+    optionally open an ApprovalInstance for visibility — non-blocking, its return value is
+    discarded, and it never gates ticket creation or any lifecycle transition."""
 
     def __init__(self, session: AsyncSession, tenant_id: uuid.UUID):
         self.session = session
@@ -93,6 +103,18 @@ class MaintenanceService:
             entity_type="maintenance_ticket",
             entity_id=ticket.id,
             new_value={"asset_id": str(asset_id), "title": title, "priority": priority},
+        )
+        # Non-blocking, record-only integration: never gates ticket creation, return value
+        # discarded. `cost` must be converted from Decimal to float before it enters `context`
+        # (a JSON column) — a raw Decimal is not JSON-serializable and would raise inside the
+        # one case that matters (a real matching threshold), aborting this whole transaction
+        # and silently rolling back the already-created ticket. See the module's implementation
+        # plan's "Critical finding" for the full reasoning.
+        await WorkflowService(self.session, self.tenant_id).evaluate_and_maybe_open(
+            entity_type=_WORKFLOW_ENTITY_TYPE,
+            entity_id=ticket.id,
+            context={"cost": float(ticket.cost) if ticket.cost is not None else None, "priority": ticket.priority},
+            actor_user_id=actor_user_id,
         )
         return ticket
 
