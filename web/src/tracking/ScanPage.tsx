@@ -8,6 +8,7 @@ import { Camera, CircleCheck, ScanLine, Video } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError } from "../core/apiClient";
 import type { IdentifierType, ScanRequest, ScanResponse, TrackingEvent } from "./types";
+import { IDENTIFIER_TYPES } from "./types";
 
 /** QR + the common 1D formats called out in the plan. Narrowing the search space with
  * DecodeHintType.POSSIBLE_FORMATS both speeds up decoding and avoids false positives. */
@@ -235,8 +236,11 @@ function Scanner() {
               onChange={(e) => setManualType(e.target.value as IdentifierType)}
               className="rounded-md border border-slate-300 px-2 py-2 text-sm bg-white"
             >
-              <option value="QR">QR</option>
-              <option value="BARCODE">Barcode</option>
+              {IDENTIFIER_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
             </select>
             <input
               type="text"

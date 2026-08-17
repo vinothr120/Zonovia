@@ -1,4 +1,9 @@
-export type IdentifierType = "QR" | "BARCODE";
+// Re-exported from ../assets/types rather than redeclared here — this used to be its own
+// "QR" | "BARCODE" union, which drifted stale once SERIAL/RFID_EPC were added there in Phase 6
+// (the backend's _IDENTIFIER_TYPES allow-list is shared across every module, not tracking-specific).
+export type { IdentifierType } from "../assets/types";
+export { IDENTIFIER_TYPES } from "../assets/types";
+import type { IdentifierType } from "../assets/types";
 
 export interface ScanRequest {
   identifier_type: IdentifierType;
